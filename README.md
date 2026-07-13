@@ -19,7 +19,7 @@ An interactive data visualization exploring how fast countries went from 10% to 
 
 ## Data
 
-Internet penetration data is sourced from [Our World in Data](https://ourworldindata.org/) / ITU (2024 release). Country boundaries and centroids come from [world-atlas](https://github.com/topojson/world-atlas) via TopoJSON.
+Internet penetration data is sourced from [Our World in Data](https://ourworldindata.org/grapher/share-of-individuals-using-the-internet) / ITU (2025 release). Country boundaries and centroids come from [world-atlas](https://github.com/topojson/world-atlas) via TopoJSON.
 
 ## Tech stack
 
