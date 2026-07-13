@@ -6,7 +6,7 @@ An interactive data visualization exploring how fast countries went from 10% to 
 
 ## Live demo
 
-Open `index.html` in any modern browser — no build step, no server, no dependencies to install.
+**[userman12.github.io/internet-adoption-map](https://userman12.github.io/internet-adoption-map/)**
 
 ## Features
 
@@ -29,19 +29,11 @@ Internet penetration data is sourced from [Our World in Data](https://ourworldin
 
 ## Running locally
 
+It's a single self-contained `index.html` — clone the repo and open the file, no build step needed.
+
 ```bash
 git clone https://github.com/userman12/internet-adoption-map.git
-cd internet-adoption-map
-open index.html
 ```
-
-Or serve it with any static file server:
-
-```bash
-python3 -m http.server
-```
-
-Then visit `http://localhost:8000`.
 
 ## License
 
