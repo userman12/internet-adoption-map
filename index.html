@@ -4,9 +4,9 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>The race to half online</title>
-<meta name="description" content="Interactive map of 30 years of internet adoption (1990–2024): how many years each country took to climb from 10% to 50% of people online. Data: Our World in Data / ITU."/>
+<meta name="description" content="Interactive map of 30 years of internet adoption (1990–2024): year-by-year timelapse with the milestones that shaped the internet, plus how many years each country took to climb from 10% to 50% of people online. Data: Our World in Data / ITU."/>
 <meta property="og:title" content="The race to half online"/>
-<meta property="og:description" content="30 years of internet adoption, mapped: which countries raced from 10% to 50% online fastest — and which stalled for a decade. Interactive flat map & 3D globe."/>
+<meta property="og:description" content="30 years of internet adoption, mapped: a year-by-year timelapse with the events that shaped the internet — and which countries raced from 10% to 50% online fastest. Interactive flat map & 3D globe."/>
 <meta property="og:type" content="website"/>
 <meta property="og:url" content="https://userman12.github.io/internet-adoption-map/"/>
 <meta property="og:image" content="https://userman12.github.io/internet-adoption-map/preview.png"/>
@@ -16,107 +16,9 @@
 <meta name="twitter:image" content="https://userman12.github.io/internet-adoption-map/preview.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
-<style>
-  :root{--bg:#0e1116;--panel:#161b22;--ink:#e9edf2;--muted:#9aa4b2;--line:#232a33;
-    --fast:#17b8a6;--mid:#e9e0c9;--slow:#e8582c;--censor:#5b4a2e;--never:#20252d;--accent:#17b8a6;}
-  *{box-sizing:border-box}
-  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
-    font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
-  #app{position:relative;width:100%;height:100vh;overflow:hidden}
-  svg{display:block;width:100%;height:100%}
-  svg.globe{cursor:grab} svg.globe.grab{cursor:grabbing}
-  .land{stroke:#0e1116;stroke-width:.4px;cursor:pointer}
-  .dot{stroke:#0e1116;stroke-width:.6px;cursor:pointer}
-  .graticule{fill:none;stroke:#1b222c;stroke-width:.5px;pointer-events:none}
-  .sphere{stroke:#2a333f;stroke-width:1px}
-  .lbl{font-size:11px;font-weight:600;fill:#fff;paint-order:stroke;stroke:#0b0e12;stroke-width:3px;
-    stroke-linejoin:round;pointer-events:none;text-anchor:middle}
-  .lbl .v{fill:var(--accent)}
-
-  .ov{transition:opacity .35s} /* overlays that clean-mode hides */
-  #app.clean .ov{opacity:0 !important;pointer-events:none !important}
-
-  .hd{position:absolute;top:26px;left:30px;max-width:460px;pointer-events:none;z-index:5}
-  .kicker{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:8px}
-  h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:30px;line-height:1.08;margin:0 0 10px;letter-spacing:-.01em}
-  .sub{font-size:13.5px;line-height:1.5;color:var(--muted);margin:0;max-width:420px}
-  .sub b{color:var(--ink);font-weight:600}
-
-  .controls{position:absolute;left:30px;bottom:26px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;z-index:6;max-width:70vw}
-  .grp{display:flex;align-items:center;gap:6px}
-  .grp .gl{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#5c6572;font-weight:600;margin-right:2px}
-  .seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:9px;overflow:hidden}
-  .seg button{background:none;border:0;color:var(--muted);padding:8px 13px;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;transition:.15s}
-  .seg button+button{border-left:1px solid var(--line)}
-  .seg button.on{background:var(--accent);color:#04201d;font-weight:600}
-  .seg button:hover:not(.on){color:var(--ink)}
-  .btn{background:var(--panel);border:1px solid var(--line);color:var(--muted);padding:8px 13px;border-radius:9px;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;transition:.15s}
-  .btn:hover{color:var(--ink);border-color:#3a4552}
-  .btn.on{color:var(--ink);border-color:var(--accent);background:#12312d}
-  .btn.play{color:#04201d;background:var(--accent);border-color:var(--accent);font-weight:600}
-  .sep{width:1px;height:22px;background:var(--line);margin:0 4px}
-  /* colour-coded highlight filters */
-  .hgroup{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-  .btn.h{display:inline-flex;align-items:center;gap:7px;padding-left:11px}
-  .btn.h .d{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none;transition:box-shadow .18s}
-  .btn.h:hover{color:var(--ink);border-color:var(--c)}
-  .btn.h.on{color:#fff;border-color:var(--c);background:var(--cbg)}
-  .btn.h.on .d{box-shadow:0 0 9px 1.5px var(--c)}
-  .h-fast{--c:#17b8a6;--cbg:rgba(23,184,166,.15)}
-  .h-slow{--c:#e8582c;--cbg:rgba(232,88,44,.15)}
-  .h-leap{--c:#e6b34a;--cbg:rgba(230,179,74,.15)}
-  .h-never{--c:#9aa4b2;--cbg:rgba(154,164,178,.14)}
-  .btn.reset{color:#7d8794}
-  .btn.reset:hover{color:var(--ink);border-color:#3a4552}
-
-  .panel{position:absolute;right:30px;bottom:26px;background:rgba(22,27,34,.86);backdrop-filter:blur(6px);
-    border:1px solid var(--line);border-radius:12px;padding:14px 16px;z-index:6;width:236px}
-  .panel .lt{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;font-weight:600}
-  .bar{height:11px;border-radius:6px;background:linear-gradient(90deg,var(--fast),var(--mid),var(--slow))}
-  .bl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-top:5px}
-  .lrow{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted);margin-top:9px}
-  .sw{width:13px;height:13px;border-radius:3px;flex:none}
-  #rank{display:none}
-  #rank.show{display:block}
-  #rank .rl{max-height:44vh;overflow:auto;margin:-2px -6px 0 0;padding-right:6px}
-  .ri{display:flex;align-items:center;gap:9px;font-size:12.5px;padding:4px 0;color:var(--ink)}
-  .ri .rk{width:15px;color:var(--muted);font-size:11px;text-align:right;font-variant-numeric:tabular-nums}
-  .ri .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ri .vv{color:var(--muted);font-variant-numeric:tabular-nums}
-  .ri .c{width:11px;height:11px;border-radius:3px;flex:none}
-
-  .year{position:absolute;top:62px;right:30px;text-align:right;z-index:6;opacity:0;transition:opacity .3s}
-  .year.show{opacity:1}
-  .year .yy{font-family:Fraunces,serif;font-size:52px;font-weight:600;line-height:1;letter-spacing:-.02em}
-  .year .yc{font-size:12.5px;color:var(--muted);margin-top:4px}
-  .year .yc b{color:var(--accent)}
-  .foot{position:absolute;right:30px;top:108px;font-size:10.5px;color:#5a6470;text-align:right;z-index:5;line-height:1.5;transition:opacity .3s}
-  #app.showyear .foot{opacity:0;pointer-events:none}
-  .scrim{position:absolute;left:0;right:0;top:0;height:250px;z-index:2;pointer-events:none;
-    background:linear-gradient(180deg,rgba(11,14,18,.92) 0%,rgba(11,14,18,.62) 34%,rgba(11,14,18,0) 100%)}
-  .scrim.b{top:auto;bottom:0;height:150px;background:linear-gradient(0deg,rgba(11,14,18,.78) 0%,rgba(11,14,18,0) 100%)}
-
-  #cleanbtn{position:absolute;top:22px;right:24px;z-index:30;background:rgba(22,27,34,.7);border:1px solid var(--line);
-    color:var(--muted);border-radius:8px;padding:7px 11px;font:inherit;font-size:11.5px;font-weight:500;cursor:pointer;
-    opacity:.45;transition:opacity .2s,color .2s}
-  #cleanbtn:hover{opacity:1;color:var(--ink)}
-  #app.clean #cleanbtn{opacity:.28}
-  #app.clean #cleanbtn:hover{opacity:1}
-
-  .hint{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);font-size:11.5px;color:#6b7480;z-index:5;opacity:0;transition:opacity .3s;pointer-events:none}
-  .hint.show{opacity:1}
-
-  .tip{position:absolute;pointer-events:none;z-index:40;background:rgba(17,21,28,.96);border:1px solid var(--line);
-    border-radius:10px;padding:11px 13px;min-width:180px;opacity:0;transition:opacity .1s;box-shadow:0 12px 34px rgba(0,0,0,.5)}
-  .tip h3{margin:0 0 8px;font-size:14px;font-weight:600}
-  .tip .g{display:flex;justify-content:space-between;font-size:12px;margin:3px 0;color:var(--muted)}
-  .tip .g b{color:var(--ink);font-variant-numeric:tabular-nums}
-  .tip .big{font-size:12.5px;margin-top:7px;padding-top:7px;border-top:1px solid var(--line);color:var(--ink)}
-  .tip .big b{font-size:15px}
-  @media(max-width:820px){.hd{max-width:78vw}.panel{display:none}.controls{max-width:92vw}h1{font-size:23px}.year .yy{font-size:38px}}
-</style>
 </head>
 <body>
 <div id="app">
@@ -128,16 +30,25 @@
   <div class="hd ov">
     <div class="kicker">30 years of the internet · 1990–2024</div>
     <h1>The race to half online</h1>
-    <p class="sub">Colour = years each country took to climb from <b>10%</b> to <b>50%</b> of people online. It wasn't the latecomers who moved fastest — it was the <b>rich</b>. The slowest were middle-income countries that put an elite online early, then stalled for a decade.</p>
+    <p class="sub">Colour = years each country took to climb from <b>10%</b> to <b>50%</b> of people online. It wasn't the latecomers who moved fastest — it was the <b>rich</b>. The slowest were middle-income countries that put an elite online early, then stalled for a decade. Press play to watch it happen, milestone by milestone.</p>
   </div>
-  <div class="year ov" id="yearbox"><div class="yy" id="yy">1995</div><div class="yc"><b id="ycount">0</b> countries at ≥<span id="ythr">50</span>% online</div></div>
+  <div class="year ov" id="yearbox"><div class="yy" id="yy">1990</div><div class="yc"><b id="ycount">0</b> countries ≥<span id="ythr">50</span>%<span id="yworld"></span></div></div>
   <div class="foot ov">Source: Our World in Data / ITU (2025)<br/>Fixed borders · colour = adoption speed</div>
   <div class="hint ov" id="hint">drag to spin the globe</div>
+  <div class="ev" id="evcard"></div>
+
+  <div class="tl-wrap ov">
+    <div class="tlbar">
+      <input type="range" id="yslider" min="1990" max="2024" step="1" value="1990" aria-label="Year"/>
+      <div class="ticks" id="ticks"></div>
+    </div>
+    <div class="tlyrs"><span>1990</span><span>2024</span></div>
+  </div>
 
   <div class="controls ov">
     <div class="seg" id="viewseg"><button data-v="flat" class="on">Flat map</button><button data-v="globe">3D globe</button></div>
     <div class="seg" id="thresh"><button data-m="g50" class="on">10 → 50%</button><button data-m="g40">10 → 40%</button></div>
-    <button class="btn play" id="play">▶ Play the wave</button>
+    <button class="btn play" id="play">▶ Play 1990–2024</button>
     <span class="sep"></span>
     <div class="hgroup">
       <button class="btn h h-fast" data-h="fast"><span class="d"></span>Fastest</button>
@@ -155,222 +66,18 @@
     <div class="lrow"><span class="sw" style="background:var(--censor)"></span>Crossed 10%, still under 50%</div>
     <div class="lrow"><span class="sw" style="background:var(--never)"></span>No data / never 10%</div>
   </div>
+  <div class="panel ov" id="legend2">
+    <div class="lt">Share of people online</div>
+    <div class="bar pct"></div>
+    <div class="bl"><span>0%</span><span>100%</span></div>
+    <div class="lrow"><span class="sw" style="background:var(--never)"></span>No data yet that year</div>
+  </div>
   <div class="panel ov" id="rank"><div class="lt" id="rankt"></div><div class="rl" id="rankl"></div></div>
 </div>
 <div class="tip" id="tip"></div>
-
-<script>
-const RAW={"countries":[{"iso":"ABW","name":"Aruba","y10":2000,"y40":2008,"y50":2008,"gap50":8,"gap40":8,"latest":97.2,"peak":97.2,"reached50":true,"lowconf":false,"ly":2017},{"iso":"AFG","name":"Afghanistan","y10":2016,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":17.7,"peak":17.7,"reached50":false,"lowconf":false,"ly":2023},{"iso":"AGO","name":"Angola","y10":2013,"y40":2022,"y50":null,"gap50":null,"gap40":9,"latest":44.8,"peak":44.8,"reached50":false,"lowconf":false,"ly":2023},{"iso":"ALB","name":"Albania","y10":2007,"y40":2009,"y50":2013,"gap50":6,"gap40":2,"latest":83.1,"peak":83.1,"reached50":true,"lowconf":false,"ly":2023},{"iso":"AND","name":"Andorra","y10":2000,"y40":2006,"y50":2007,"gap50":7,"gap40":6,"latest":95.4,"peak":95.4,"reached50":true,"lowconf":false,"ly":2023},{"iso":"ARE","name":"United Arab Emirates","y10":1999,"y40":2005,"y50":2006,"gap50":7,"gap40":6,"latest":100.0,"peak":100.0,"reached50":true,"lowconf":false,"ly":2024},{"iso":"ARG","name":"Argentina","y10":2002,"y40":2010,"y50":2011,"gap50":9,"gap40":8,"latest":89.7,"peak":89.7,"reached50":true,"lowconf":false,"ly":2024},{"iso":"ARM","name":"Armenia","y10":2009,"y40":2013,"y50":2014,"gap50":5,"gap40":4,"latest":80.0,"peak":80.0,"reached50":true,"lowconf":false,"ly":2023},{"iso":"ASM","name":"American Samoa","y10":null,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":0.0,"peak":0.0,"reached50":false,"lowconf":true,"ly":1990},{"iso":"ATG","name":"Antigua and Barbuda","y10":2002,"y40":2009,"y50":2011,"gap50":9,"gap40":7,"latest":77.6,"peak":77.6,"reached50":true,"lowconf":false,"ly":2023},{"iso":"AUS","name":"Australia","y10":1997,"y40":1999,"y50":2001,"gap50":4,"gap40":2,"latest":97.1,"peak":97.1,"reached50":true,"lowconf":false,"ly":2023},{"iso":"AUT","name":"Austria","y10":1998,"y40":2003,"y50":2004,"gap50":6,"gap40":5,"latest":94.9,"peak":95.3,"reached50":true,"lowconf":false,"ly":2024},{"iso":"AZE","name":"Azerbaijan","y10":2006,"y40":2010,"y50":2011,"gap50":5,"gap40":4,"latest":89.0,"peak":89.0,"reached50":true,"lowconf":false,"ly":2023},{"iso":"BDI","name":"Burundi","y10":2021,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":11.1,"peak":11.1,"reached50":false,"lowconf":false,"ly":2023},{"iso":"BEL","name":"Belgium","y10":1999,"y40":2002,"y50":2004,"gap50":5,"gap40":3,"latest":95.8,"peak":95.8,"reached50":true,"lowconf":false,"ly":2024},{"iso":"BEN","name":"Benin","y10":2015,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":32.2,"peak":32.2,"reached50":false,"lowconf":false,"ly":2023},{"iso":"BFA","name":"Burkina Faso","y10":2020,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":17.0,"peak":17.0,"reached50":false,"lowconf":false,"ly":2023},{"iso":"BGD","name":"Bangladesh","y10":2014,"y40":2022,"y50":null,"gap50":null,"gap40":8,"latest":44.5,"peak":44.5,"reached50":false,"lowconf":false,"ly":2023},{"iso":"BGR","name":"Bulgaria","y10":2003,"y40":2009,"y50":2012,"gap50":9,"gap40":6,"latest":82.4,"peak":82.4,"reached50":true,"lowconf":false,"ly":2024},{"iso":"BHR","name":"Bahrain","y10":2001,"y40":2008,"y50":2008,"gap50":7,"gap40":7,"latest":100.0,"peak":100.0,"reached50":true,"lowconf":false,"ly":2024},{"iso":"BHS","name":"Bahamas","y10":2001,"y40":2010,"y50":2011,"gap50":10,"gap40":9,"latest":94.8,"peak":94.8,"reached50":true,"lowconf":false,"ly":2023},{"iso":"BIH","name":"Bosnia and Herzegovina","y10":2004,"y40":2010,"y50":2015,"gap50":11,"gap40":6,"latest":86.1,"peak":86.1,"reached50":true,"lowconf":false,"ly":2024},{"iso":"BLR","name":"Belarus","y10":2006,"y40":2012,"y50":2013,"gap50":7,"gap40":6,"latest":94.3,"peak":94.3,"reached50":true,"lowconf":false,"ly":2024},{"iso":"BLZ","name":"Belize","y10":2005,"y40":2015,"y50":2018,"gap50":13,"gap40":10,"latest":72.4,"peak":72.4,"reached50":true,"lowconf":false,"ly":2023},{"iso":"BMU","name":"Bermuda","y10":1996,"y40":2000,"y50":2002,"gap50":6,"gap40":4,"latest":98.4,"peak":98.4,"reached50":true,"lowconf":false,"ly":2017},{"iso":"BOL","name":"Bolivia","y10":2007,"y40":2017,"y50":2020,"gap50":13,"gap40":10,"latest":70.2,"peak":70.2,"reached50":true,"lowconf":false,"ly":2023},{"iso":"BRA","name":"Brazil","y10":2003,"y40":2010,"y50":2013,"gap50":10,"gap40":7,"latest":84.5,"peak":84.5,"reached50":true,"lowconf":false,"ly":2024},{"iso":"BRB","name":"Barbados","y10":2001,"y40":2004,"y50":2005,"gap50":4,"gap40":3,"latest":80.0,"peak":80.0,"reached50":true,"lowconf":false,"ly":2023},{"iso":"BRN","name":"Brunei","y10":2001,"y40":2006,"y50":2010,"gap50":9,"gap40":5,"latest":99.0,"peak":99.0,"reached50":true,"lowconf":false,"ly":2023},{"iso":"BTN","name":"Bhutan","y10":2010,"y40":2016,"y50":2017,"gap50":7,"gap40":6,"latest":88.4,"peak":88.4,"reached50":true,"lowconf":false,"ly":2023},{"iso":"BWA","name":"Botswana","y10":2012,"y40":2016,"y50":2018,"gap50":6,"gap40":4,"latest":81.4,"peak":81.4,"reached50":true,"lowconf":false,"ly":2023},{"iso":"CAF","name":"Central African Republic","y10":null,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":7.5,"peak":7.5,"reached50":false,"lowconf":true,"ly":2019},{"iso":"CAN","name":"Canada","y10":1997,"y40":2000,"y50":2000,"gap50":3,"gap40":3,"latest":94.0,"peak":94.6,"reached50":true,"lowconf":false,"ly":2023},{"iso":"CHE","name":"Switzerland","y10":1997,"y40":2000,"y50":2001,"gap50":4,"gap40":3,"latest":97.3,"peak":97.3,"reached50":true,"lowconf":false,"ly":2023},{"iso":"CHL","name":"Chile","y10":2000,"y40":2009,"y50":2011,"gap50":11,"gap40":9,"latest":94.5,"peak":94.5,"reached50":true,"lowconf":false,"ly":2023},{"iso":"CHN","name":"China","y10":2006,"y40":2012,"y50":2015,"gap50":9,"gap40":6,"latest":92.0,"peak":92.0,"reached50":true,"lowconf":false,"ly":2024},{"iso":"CIV","name":"Cote d'Ivoire","y10":2014,"y40":2016,"y50":null,"gap50":null,"gap40":2,"latest":40.7,"peak":43.8,"reached50":false,"lowconf":false,"ly":2023},{"iso":"CMR","name":"Cameroon","y10":2013,"y40":2020,"y50":null,"gap50":null,"gap40":7,"latest":41.9,"peak":42.0,"reached50":false,"lowconf":false,"ly":2023},{"iso":"COD","name":"Democratic Republic of Congo","y10":2016,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":30.5,"peak":30.5,"reached50":false,"lowconf":false,"ly":2023},{"iso":"COG","name":"Congo","y10":2020,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":38.4,"peak":38.4,"reached50":false,"lowconf":false,"ly":2023},{"iso":"COL","name":"Colombia","y10":2005,"y40":2011,"y50":2013,"gap50":8,"gap40":6,"latest":77.3,"peak":77.3,"reached50":true,"lowconf":false,"ly":2023},{"iso":"COM","name":"Comoros","y10":2019,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":35.7,"peak":35.7,"reached50":false,"lowconf":false,"ly":2023},{"iso":"CPV","name":"Cape Verde","y10":2008,"y40":2014,"y50":2016,"gap50":8,"gap40":6,"latest":73.5,"peak":73.5,"reached50":true,"lowconf":false,"ly":2023},{"iso":"CRI","name":"Costa Rica","y10":2002,"y40":2012,"y50":2014,"gap50":12,"gap40":10,"latest":85.4,"peak":85.4,"reached50":true,"lowconf":false,"ly":2023},{"iso":"CUB","name":"Cuba","y10":2006,"y40":2016,"y50":2017,"gap50":11,"gap40":10,"latest":71.3,"peak":71.3,"reached50":true,"lowconf":false,"ly":2023},{"iso":"CUW","name":"Curacao","y10":2016,"y40":2016,"y50":2016,"gap50":0,"gap40":0,"latest":68.1,"peak":68.1,"reached50":true,"lowconf":true,"ly":2017},{"iso":"CYM","name":"Cayman Islands","y10":2005,"y40":2006,"y50":2007,"gap50":2,"gap40":1,"latest":81.1,"peak":81.1,"reached50":true,"lowconf":false,"ly":2017},{"iso":"CYP","name":"Cyprus","y10":1999,"y40":2007,"y50":2010,"gap50":11,"gap40":8,"latest":91.2,"peak":91.2,"reached50":true,"lowconf":false,"ly":2023},{"iso":"CZE","name":"Czechia","y10":2001,"y40":2006,"y50":2007,"gap50":6,"gap40":5,"latest":87.7,"peak":87.7,"reached50":true,"lowconf":false,"ly":2024},{"iso":"DEU","name":"Germany","y10":1999,"y40":2002,"y50":2003,"gap50":4,"gap40":3,"latest":93.5,"peak":93.5,"reached50":true,"lowconf":false,"ly":2024},{"iso":"DJI","name":"Djibouti","y10":2013,"y40":2017,"y50":2017,"gap50":4,"gap40":4,"latest":65.0,"peak":65.0,"reached50":true,"lowconf":false,"ly":2023},{"iso":"DMA","name":"Dominica","y10":2001,"y40":2007,"y50":2013,"gap50":12,"gap40":6,"latest":83.8,"peak":83.8,"reached50":true,"lowconf":false,"ly":2023},{"iso":"DNK","name":"Denmark","y10":1997,"y40":2001,"y50":2002,"gap50":5,"gap40":4,"latest":99.8,"peak":99.8,"reached50":true,"lowconf":false,"ly":2024},{"iso":"DOM","name":"Dominican Republic","y10":2005,"y40":2012,"y50":2015,"gap50":10,"gap40":7,"latest":91.0,"peak":91.0,"reached50":true,"lowconf":false,"ly":2024},{"iso":"DZA","name":"Algeria","y10":2008,"y40":2016,"y50":2019,"gap50":11,"gap40":8,"latest":76.9,"peak":76.9,"reached50":true,"lowconf":false,"ly":2023},{"iso":"ECU","name":"Ecuador","y10":2007,"y40":2013,"y50":2016,"gap50":9,"gap40":6,"latest":77.2,"peak":77.2,"reached50":true,"lowconf":false,"ly":2024},{"iso":"EGY","name":"Egypt","y10":2004,"y40":2016,"y50":2019,"gap50":15,"gap40":12,"latest":72.7,"peak":72.7,"reached50":true,"lowconf":false,"ly":2023},{"iso":"ERI","name":"Eritrea","y10":2019,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":20.0,"peak":20.0,"reached50":false,"lowconf":false,"ly":2023},{"iso":"ESP","name":"Spain","y10":2000,"y40":2004,"y50":2006,"gap50":6,"gap40":4,"latest":95.8,"peak":95.8,"reached50":true,"lowconf":false,"ly":2024},{"iso":"EST","name":"Estonia","y10":1998,"y40":2002,"y50":2004,"gap50":6,"gap40":4,"latest":92.2,"peak":93.2,"reached50":true,"lowconf":false,"ly":2024},{"iso":"ETH","name":"Ethiopia","y10":2015,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":16.7,"peak":16.7,"reached50":false,"lowconf":false,"ly":2021},{"iso":"FIN","name":"Finland","y10":1995,"y40":2001,"y50":2002,"gap50":7,"gap40":6,"latest":93.5,"peak":93.5,"reached50":true,"lowconf":false,"ly":2023},{"iso":"FJI","name":"Fiji","y10":2007,"y40":2015,"y50":2017,"gap50":10,"gap40":8,"latest":79.3,"peak":79.3,"reached50":true,"lowconf":false,"ly":2023},{"iso":"FRA","name":"France","y10":2000,"y40":2005,"y50":2007,"gap50":7,"gap40":5,"latest":88.7,"peak":88.7,"reached50":true,"lowconf":false,"ly":2024},{"iso":"FRO","name":"Faroe Islands","y10":1998,"y40":2001,"y50":2002,"gap50":4,"gap40":3,"latest":97.6,"peak":97.6,"reached50":true,"lowconf":false,"ly":2017},{"iso":"FSM","name":"Micronesia (country)","y10":2004,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":39.4,"peak":39.4,"reached50":false,"lowconf":false,"ly":2020},{"iso":"GAB","name":"Gabon","y10":2010,"y40":2015,"y50":2017,"gap50":7,"gap40":5,"latest":71.9,"peak":71.9,"reached50":true,"lowconf":false,"ly":2023},{"iso":"GBR","name":"United Kingdom","y10":1998,"y40":2002,"y50":2002,"gap50":4,"gap40":4,"latest":96.3,"peak":96.3,"reached50":true,"lowconf":false,"ly":2023},{"iso":"GEO","name":"Georgia","y10":2008,"y40":2013,"y50":2016,"gap50":8,"gap40":5,"latest":81.9,"peak":81.9,"reached50":true,"lowconf":false,"ly":2023},{"iso":"GHA","name":"Ghana","y10":2012,"y40":2018,"y50":2020,"gap50":8,"gap40":6,"latest":69.9,"peak":69.9,"reached50":true,"lowconf":false,"ly":2023},{"iso":"GIB","name":"Gibraltar","y10":2000,"y40":2006,"y50":2007,"gap50":7,"gap40":6,"latest":94.4,"peak":94.4,"reached50":true,"lowconf":true,"ly":2016},{"iso":"GIN","name":"Guinea","y10":2016,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":26.5,"peak":26.5,"reached50":false,"lowconf":false,"ly":2023},{"iso":"GMB","name":"Gambia","y10":2011,"y40":2022,"y50":null,"gap50":null,"gap40":11,"latest":45.9,"peak":45.9,"reached50":false,"lowconf":false,"ly":2023},{"iso":"GNB","name":"Guinea-Bissau","y10":2016,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":32.5,"peak":32.5,"reached50":false,"lowconf":false,"ly":2023},{"iso":"GNQ","name":"Equatorial Guinea","y10":2011,"y40":2019,"y50":2020,"gap50":9,"gap40":8,"latest":60.4,"peak":60.4,"reached50":true,"lowconf":false,"ly":2023},{"iso":"GRC","name":"Greece","y10":2001,"y40":2009,"y50":2011,"gap50":10,"gap40":8,"latest":86.3,"peak":86.3,"reached50":true,"lowconf":false,"ly":2024},{"iso":"GRD","name":"Grenada","y10":2002,"y40":2014,"y50":2014,"gap50":12,"gap40":12,"latest":74.1,"peak":74.1,"reached50":true,"lowconf":false,"ly":2023},{"iso":"GRL","name":"Greenland","y10":1998,"y40":2002,"y50":2003,"gap50":5,"gap40":4,"latest":69.5,"peak":69.5,"reached50":true,"lowconf":false,"ly":2017},{"iso":"GTM","name":"Guatemala","y10":2010,"y40":2018,"y50":2021,"gap50":11,"gap40":8,"latest":56.1,"peak":56.1,"reached50":true,"lowconf":false,"ly":2023},{"iso":"GUY","name":"Guyana","y10":2007,"y40":2017,"y50":2019,"gap50":12,"gap40":10,"latest":81.7,"peak":81.7,"reached50":true,"lowconf":false,"ly":2023},{"iso":"HND","name":"Honduras","y10":2010,"y40":2020,"y50":2021,"gap50":11,"gap40":10,"latest":58.3,"peak":58.3,"reached50":true,"lowconf":false,"ly":2023},{"iso":"HRV","name":"Croatia","y10":2001,"y40":2007,"y50":2009,"gap50":8,"gap40":6,"latest":83.6,"peak":83.6,"reached50":true,"lowconf":false,"ly":2024},{"iso":"HTI","name":"Haiti","y10":2013,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":39.3,"peak":39.3,"reached50":false,"lowconf":false,"ly":2019},{"iso":"HUN","name":"Hungary","y10":2001,"y40":2006,"y50":2007,"gap50":6,"gap40":5,"latest":93.8,"peak":93.8,"reached50":true,"lowconf":false,"ly":2024},{"iso":"IDN","name":"Indonesia","y10":2010,"y40":2019,"y50":2020,"gap50":10,"gap40":9,"latest":72.8,"peak":72.8,"reached50":true,"lowconf":false,"ly":2024},{"iso":"IND","name":"India","y10":2011,"y40":2020,"y50":2022,"gap50":11,"gap40":9,"latest":70.0,"peak":70.0,"reached50":true,"lowconf":false,"ly":2025},{"iso":"IRL","name":"Ireland","y10":1999,"y40":2005,"y50":2006,"gap50":7,"gap40":6,"latest":96.5,"peak":96.5,"reached50":true,"lowconf":false,"ly":2023},{"iso":"IRN","name":"Iran","y10":2008,"y40":2015,"y50":2016,"gap50":8,"gap40":7,"latest":79.6,"peak":79.6,"reached50":true,"lowconf":false,"ly":2023},{"iso":"IRQ","name":"Iraq","y10":2014,"y40":2017,"y50":2020,"gap50":6,"gap40":3,"latest":81.7,"peak":81.7,"reached50":true,"lowconf":false,"ly":2023},{"iso":"ISL","name":"Iceland","y10":1995,"y40":1999,"y50":2002,"gap50":7,"gap40":4,"latest":99.8,"peak":99.8,"reached50":true,"lowconf":false,"ly":2023},{"iso":"ISR","name":"Israel","y10":1998,"y40":2007,"y50":2008,"gap50":10,"gap40":9,"latest":88.2,"peak":88.2,"reached50":true,"lowconf":false,"ly":2024},{"iso":"ITA","name":"Italy","y10":1999,"y40":2007,"y50":2010,"gap50":11,"gap40":8,"latest":89.2,"peak":89.2,"reached50":true,"lowconf":false,"ly":2024},{"iso":"JAM","name":"Jamaica","y10":2004,"y40":2014,"y50":2017,"gap50":13,"gap40":10,"latest":89.5,"peak":89.5,"reached50":true,"lowconf":false,"ly":2023},{"iso":"JOR","name":"Jordan","y10":2004,"y40":2013,"y50":2015,"gap50":11,"gap40":9,"latest":92.5,"peak":92.5,"reached50":true,"lowconf":false,"ly":2023},{"iso":"JPN","name":"Japan","y10":1998,"y40":2002,"y50":2004,"gap50":6,"gap40":4,"latest":87.0,"peak":87.0,"reached50":true,"lowconf":false,"ly":2023},{"iso":"KAZ","name":"Kazakhstan","y10":2008,"y40":2011,"y50":2011,"gap50":3,"gap40":3,"latest":93.4,"peak":93.4,"reached50":true,"lowconf":false,"ly":2024},{"iso":"KEN","name":"Kenya","y10":2012,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":35.0,"peak":35.0,"reached50":false,"lowconf":false,"ly":2024},{"iso":"KGZ","name":"Kyrgyzstan","y10":2005,"y40":2016,"y50":2017,"gap50":12,"gap40":11,"latest":88.5,"peak":88.5,"reached50":true,"lowconf":false,"ly":2023},{"iso":"KHM","name":"Cambodia","y10":2014,"y40":2019,"y50":2019,"gap50":5,"gap40":5,"latest":60.7,"peak":60.7,"reached50":true,"lowconf":false,"ly":2023},{"iso":"KIR","name":"Kiribati","y10":2011,"y40":2023,"y50":2023,"gap50":12,"gap40":12,"latest":88.0,"peak":88.0,"reached50":true,"lowconf":false,"ly":2023},{"iso":"KNA","name":"Saint Kitts and Nevis","y10":2002,"y40":2007,"y50":2009,"gap50":7,"gap40":5,"latest":76.4,"peak":76.4,"reached50":true,"lowconf":false,"ly":2023},{"iso":"KOR","name":"South Korea","y10":1999,"y40":2000,"y50":2001,"gap50":2,"gap40":1,"latest":97.9,"peak":97.9,"reached50":true,"lowconf":false,"ly":2024},{"iso":"KWT","name":"Kuwait","y10":2002,"y40":2008,"y50":2009,"gap50":7,"gap40":6,"latest":99.7,"peak":99.7,"reached50":true,"lowconf":false,"ly":2023},{"iso":"LAO","name":"Laos","y10":2012,"y40":2019,"y50":2020,"gap50":8,"gap40":7,"latest":63.6,"peak":63.6,"reached50":true,"lowconf":false,"ly":2023},{"iso":"LBN","name":"Lebanon","y10":2005,"y40":2010,"y50":2011,"gap50":6,"gap40":5,"latest":83.5,"peak":83.5,"reached50":true,"lowconf":false,"ly":2023},{"iso":"LBR","name":"Liberia","y10":2015,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":23.5,"peak":23.5,"reached50":false,"lowconf":false,"ly":2023},{"iso":"LBY","name":"Libya","y10":2009,"y40":2020,"y50":2020,"gap50":11,"gap40":11,"latest":88.5,"peak":88.5,"reached50":true,"lowconf":false,"ly":2023},{"iso":"LCA","name":"Saint Lucia","y10":2002,"y40":2012,"y50":2014,"gap50":12,"gap40":10,"latest":70.1,"peak":70.1,"reached50":true,"lowconf":false,"ly":2023},{"iso":"LIE","name":"Liechtenstein","y10":2000,"y40":2001,"y50":2002,"gap50":2,"gap40":1,"latest":97.3,"peak":97.3,"reached50":true,"lowconf":true,"ly":2023},{"iso":"LKA","name":"Sri Lanka","y10":2014,"y40":2021,"y50":2023,"gap50":9,"gap40":7,"latest":51.2,"peak":51.2,"reached50":true,"lowconf":true,"ly":2023},{"iso":"LSO","name":"Lesotho","y10":2012,"y40":2018,"y50":null,"gap50":null,"gap40":6,"latest":48.0,"peak":48.0,"reached50":false,"lowconf":false,"ly":2023},{"iso":"LTU","name":"Lithuania","y10":2002,"y40":2006,"y50":2008,"gap50":6,"gap40":4,"latest":88.5,"peak":88.5,"reached50":true,"lowconf":false,"ly":2023},{"iso":"LUX","name":"Luxembourg","y10":1998,"y40":2003,"y50":2003,"gap50":5,"gap40":5,"latest":98.8,"peak":98.8,"reached50":true,"lowconf":false,"ly":2024},{"iso":"LVA","name":"Latvia","y10":2002,"y40":2005,"y50":2006,"gap50":4,"gap40":3,"latest":92.7,"peak":92.7,"reached50":true,"lowconf":false,"ly":2024},{"iso":"MAR","name":"Morocco","y10":2004,"y40":2009,"y50":2010,"gap50":6,"gap40":5,"latest":91.0,"peak":91.0,"reached50":true,"lowconf":false,"ly":2023},{"iso":"MCO","name":"Monaco","y10":2000,"y40":2000,"y50":2004,"gap50":4,"gap40":0,"latest":99.1,"peak":99.1,"reached50":true,"lowconf":false,"ly":2023},{"iso":"MDA","name":"Moldova","y10":2004,"y40":2014,"y50":2014,"gap50":10,"gap40":10,"latest":80.2,"peak":80.2,"reached50":true,"lowconf":false,"ly":2023},{"iso":"MDG","name":"Madagascar","y10":2020,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":20.4,"peak":20.4,"reached50":false,"lowconf":false,"ly":2023},{"iso":"MDV","name":"Maldives","y10":2006,"y40":2013,"y50":2015,"gap50":9,"gap40":7,"latest":84.7,"peak":84.7,"reached50":true,"lowconf":false,"ly":2023},{"iso":"MEX","name":"Mexico","y10":2002,"y40":2013,"y50":2015,"gap50":13,"gap40":11,"latest":81.2,"peak":81.2,"reached50":true,"lowconf":false,"ly":2023},{"iso":"MHL","name":"Marshall Islands","y10":2011,"y40":2018,"y50":2020,"gap50":9,"gap40":7,"latest":65.7,"peak":65.7,"reached50":true,"lowconf":false,"ly":2023},{"iso":"MKD","name":"North Macedonia","y10":2002,"y40":2008,"y50":2009,"gap50":7,"gap40":6,"latest":87.2,"peak":87.2,"reached50":true,"lowconf":false,"ly":2023},{"iso":"MLI","name":"Mali","y10":2015,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":35.1,"peak":35.1,"reached50":false,"lowconf":false,"ly":2023},{"iso":"MLT","name":"Malta","y10":2000,"y40":2005,"y50":2008,"gap50":8,"gap40":5,"latest":92.1,"peak":92.1,"reached50":true,"lowconf":false,"ly":2023},{"iso":"MMR","name":"Myanmar","y10":2015,"y40":2020,"y50":2021,"gap50":6,"gap40":5,"latest":58.5,"peak":58.5,"reached50":true,"lowconf":false,"ly":2023},{"iso":"MNE","name":"Montenegro","y10":2004,"y40":2012,"y50":2012,"gap50":8,"gap40":8,"latest":88.9,"peak":88.9,"reached50":true,"lowconf":false,"ly":2024},{"iso":"MNG","name":"Mongolia","y10":2009,"y40":2018,"y50":2019,"gap50":10,"gap40":9,"latest":83.0,"peak":83.0,"reached50":true,"lowconf":false,"ly":2023},{"iso":"MOZ","name":"Mozambique","y10":2018,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":19.8,"peak":19.8,"reached50":false,"lowconf":false,"ly":2023},{"iso":"MRT","name":"Mauritania","y10":2014,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":37.4,"peak":37.4,"reached50":false,"lowconf":false,"ly":2023},{"iso":"MUS","name":"Mauritius","y10":2002,"y40":2013,"y50":2015,"gap50":13,"gap40":11,"latest":79.5,"peak":79.5,"reached50":true,"lowconf":false,"ly":2023},{"iso":"MWI","name":"Malawi","y10":2019,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":18.0,"peak":18.0,"reached50":false,"lowconf":false,"ly":2023},{"iso":"MYS","name":"Malaysia","y10":1999,"y40":2004,"y50":2006,"gap50":7,"gap40":5,"latest":98.0,"peak":98.0,"reached50":true,"lowconf":false,"ly":2024},{"iso":"NAM","name":"Namibia","y10":2010,"y40":2018,"y50":2020,"gap50":10,"gap40":8,"latest":64.4,"peak":64.4,"reached50":true,"lowconf":false,"ly":2023},{"iso":"NCL","name":"New Caledonia","y10":2000,"y40":2010,"y50":2011,"gap50":11,"gap40":10,"latest":82.0,"peak":82.0,"reached50":true,"lowconf":false,"ly":2017},{"iso":"NER","name":"Niger","y10":2017,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":23.2,"peak":23.2,"reached50":false,"lowconf":false,"ly":2023},{"iso":"NGA","name":"Nigeria","y10":2010,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":39.2,"peak":39.2,"reached50":false,"lowconf":false,"ly":2023},{"iso":"NIC","name":"Nicaragua","y10":2010,"y40":2020,"y50":2023,"gap50":13,"gap40":10,"latest":58.2,"peak":58.2,"reached50":true,"lowconf":false,"ly":2023},{"iso":"NLD","name":"Netherlands","y10":1997,"y40":2000,"y50":2002,"gap50":5,"gap40":3,"latest":97.0,"peak":97.0,"reached50":true,"lowconf":false,"ly":2023},{"iso":"NOR","name":"Norway","y10":1996,"y40":1999,"y50":2000,"gap50":4,"gap40":3,"latest":99.0,"peak":99.0,"reached50":true,"lowconf":false,"ly":2023},{"iso":"NPL","name":"Nepal","y10":2012,"y40":2021,"y50":2022,"gap50":10,"gap40":9,"latest":55.8,"peak":55.8,"reached50":true,"lowconf":false,"ly":2023},{"iso":"NRU","name":"Nauru","y10":2011,"y40":2011,"y50":2011,"gap50":0,"gap40":0,"latest":81.7,"peak":81.7,"reached50":true,"lowconf":true,"ly":2020},{"iso":"NZL","name":"New Zealand","y10":1997,"y40":1999,"y50":2001,"gap50":4,"gap40":2,"latest":96.2,"peak":96.2,"reached50":true,"lowconf":false,"ly":2023},{"iso":"OMN","name":"Oman","y10":2007,"y40":2011,"y50":2012,"gap50":5,"gap40":4,"latest":95.3,"peak":95.3,"reached50":true,"lowconf":false,"ly":2023},{"iso":"OWID_KOS","name":"Kosovo","y10":2017,"y40":2017,"y50":2017,"gap50":0,"gap40":0,"latest":89.4,"peak":89.4,"reached50":true,"lowconf":true,"ly":2018},{"iso":"PAK","name":"Pakistan","y10":2014,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":27.4,"peak":27.4,"reached50":false,"lowconf":false,"ly":2023},{"iso":"PAN","name":"Panama","y10":2004,"y40":2010,"y50":2015,"gap50":11,"gap40":6,"latest":68.5,"peak":68.5,"reached50":true,"lowconf":false,"ly":2023},{"iso":"PER","name":"Peru","y10":2003,"y40":2014,"y50":2017,"gap50":14,"gap40":11,"latest":82.0,"peak":82.0,"reached50":true,"lowconf":false,"ly":2024},{"iso":"PHL","name":"Philippines","y10":2010,"y40":2017,"y50":2020,"gap50":10,"gap40":7,"latest":83.8,"peak":83.8,"reached50":true,"lowconf":false,"ly":2023},{"iso":"PLW","name":"Palau","y10":2002,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":27.0,"peak":27.0,"reached50":false,"lowconf":true,"ly":2004},{"iso":"PNG","name":"Papua New Guinea","y10":2017,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":24.1,"peak":24.1,"reached50":false,"lowconf":false,"ly":2023},{"iso":"POL","name":"Poland","y10":2002,"y40":2006,"y50":2008,"gap50":6,"gap40":4,"latest":88.6,"peak":88.6,"reached50":true,"lowconf":false,"ly":2024},{"iso":"PRI","name":"Puerto Rico","y10":2000,"y40":2009,"y50":2012,"gap50":12,"gap40":9,"latest":87.3,"peak":87.3,"reached50":true,"lowconf":false,"ly":2022},{"iso":"PRK","name":"North Korea","y10":null,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":0.0,"peak":0.0,"reached50":false,"lowconf":true,"ly":2012},{"iso":"PRT","name":"Portugal","y10":1999,"y40":2007,"y50":2010,"gap50":11,"gap40":8,"latest":88.5,"peak":88.5,"reached50":true,"lowconf":false,"ly":2024},{"iso":"PRY","name":"Paraguay","y10":2007,"y40":2014,"y50":2016,"gap50":9,"gap40":7,"latest":81.6,"peak":81.6,"reached50":true,"lowconf":false,"ly":2024},{"iso":"PSE","name":"Palestine","y10":2005,"y40":2011,"y50":2014,"gap50":9,"gap40":6,"latest":86.6,"peak":86.6,"reached50":true,"lowconf":false,"ly":2023},{"iso":"PYF","name":"French Polynesia","y10":2003,"y40":2009,"y50":2012,"gap50":9,"gap40":6,"latest":72.7,"peak":72.7,"reached50":true,"lowconf":false,"ly":2017},{"iso":"QAT","name":"Qatar","y10":2002,"y40":2008,"y50":2009,"gap50":7,"gap40":6,"latest":99.7,"peak":99.7,"reached50":true,"lowconf":false,"ly":2023},{"iso":"ROU","name":"Romania","y10":2004,"y40":2011,"y50":2014,"gap50":10,"gap40":7,"latest":91.3,"peak":91.3,"reached50":true,"lowconf":false,"ly":2024},{"iso":"RUS","name":"Russia","y10":2004,"y40":2009,"y50":2011,"gap50":7,"gap40":5,"latest":94.4,"peak":94.4,"reached50":true,"lowconf":false,"ly":2024},{"iso":"RWA","name":"Rwanda","y10":2014,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":34.2,"peak":34.2,"reached50":false,"lowconf":false,"ly":2023},{"iso":"SAU","name":"Saudi Arabia","y10":2004,"y40":2010,"y50":2012,"gap50":8,"gap40":6,"latest":100.0,"peak":100.0,"reached50":true,"lowconf":false,"ly":2024},{"iso":"SDN","name":"Sudan","y10":2016,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":26.4,"peak":26.4,"reached50":false,"lowconf":true,"ly":2020},{"iso":"SEN","name":"Senegal","y10":2012,"y40":2019,"y50":2020,"gap50":8,"gap40":7,"latest":60.6,"peak":60.6,"reached50":true,"lowconf":false,"ly":2023},{"iso":"SGP","name":"Singapore","y10":1997,"y40":2001,"y50":2003,"gap50":6,"gap40":4,"latest":94.4,"peak":96.9,"reached50":true,"lowconf":false,"ly":2021},{"iso":"SLB","name":"Solomon Islands","y10":2015,"y40":2021,"y50":null,"gap50":null,"gap40":6,"latest":42.5,"peak":42.5,"reached50":false,"lowconf":false,"ly":2023},{"iso":"SLE","name":"Sierra Leone","y10":2016,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":20.6,"peak":20.6,"reached50":false,"lowconf":false,"ly":2023},{"iso":"SLV","name":"El Salvador","y10":2008,"y40":2018,"y50":2019,"gap50":11,"gap40":10,"latest":67.7,"peak":67.7,"reached50":true,"lowconf":false,"ly":2023},{"iso":"SMR","name":"San Marino","y10":1999,"y40":1999,"y50":2001,"gap50":2,"gap40":0,"latest":87.0,"peak":87.0,"reached50":true,"lowconf":true,"ly":2023},{"iso":"SOM","name":"Somalia","y10":2020,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":27.6,"peak":27.6,"reached50":false,"lowconf":true,"ly":2022},{"iso":"SRB","name":"Serbia","y10":2004,"y40":2010,"y50":2013,"gap50":9,"gap40":6,"latest":87.7,"peak":87.7,"reached50":true,"lowconf":false,"ly":2024},{"iso":"SSD","name":"South Sudan","y10":null,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":9.3,"peak":9.3,"reached50":false,"lowconf":true,"ly":2020},{"iso":"STP","name":"Sao Tome and Principe","y10":2003,"y40":2019,"y50":2020,"gap50":17,"gap40":16,"latest":61.5,"peak":61.5,"reached50":true,"lowconf":false,"ly":2023},{"iso":"SUR","name":"Suriname","y10":2007,"y40":2014,"y50":2018,"gap50":11,"gap40":7,"latest":78.4,"peak":78.4,"reached50":true,"lowconf":false,"ly":2023},{"iso":"SVK","name":"Slovakia","y10":2001,"y40":2002,"y50":2004,"gap50":3,"gap40":1,"latest":89.8,"peak":89.8,"reached50":true,"lowconf":false,"ly":2024},{"iso":"SVN","name":"Slovenia","y10":1998,"y40":2004,"y50":2006,"gap50":8,"gap40":6,"latest":90.8,"peak":90.8,"reached50":true,"lowconf":false,"ly":2024},{"iso":"SWE","name":"Sweden","y10":1997,"y40":1999,"y50":2001,"gap50":4,"gap40":2,"latest":95.5,"peak":95.7,"reached50":true,"lowconf":false,"ly":2023},{"iso":"SWZ","name":"Eswatini","y10":2010,"y40":2019,"y50":2021,"gap50":11,"gap40":9,"latest":57.6,"peak":57.6,"reached50":true,"lowconf":false,"ly":2023},{"iso":"SYC","name":"Seychelles","y10":2001,"y40":2008,"y50":2013,"gap50":12,"gap40":7,"latest":87.4,"peak":87.4,"reached50":true,"lowconf":false,"ly":2023},{"iso":"SYR","name":"Syria","y10":2007,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":34.6,"peak":34.6,"reached50":false,"lowconf":false,"ly":2019},{"iso":"TCD","name":"Chad","y10":2021,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":13.2,"peak":13.2,"reached50":false,"lowconf":false,"ly":2023},{"iso":"TGO","name":"Togo","y10":2016,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":37.0,"peak":37.0,"reached50":false,"lowconf":false,"ly":2023},{"iso":"THA","name":"Thailand","y10":2004,"y40":2016,"y50":2017,"gap50":13,"gap40":12,"latest":90.9,"peak":90.9,"reached50":true,"lowconf":false,"ly":2024},{"iso":"TJK","name":"Tajikistan","y10":2009,"y40":2021,"y50":2022,"gap50":13,"gap40":12,"latest":56.8,"peak":56.8,"reached50":true,"lowconf":false,"ly":2023},{"iso":"TKM","name":"Turkmenistan","y10":2014,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":21.3,"peak":21.3,"reached50":false,"lowconf":true,"ly":2017},{"iso":"TLS","name":"East Timor","y10":2013,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":34.0,"peak":35.0,"reached50":false,"lowconf":false,"ly":2023},{"iso":"TON","name":"Tonga","y10":2009,"y40":2017,"y50":2021,"gap50":12,"gap40":8,"latest":58.5,"peak":58.5,"reached50":true,"lowconf":false,"ly":2023},{"iso":"TTO","name":"Trinidad and Tobago","y10":2001,"y40":2009,"y50":2011,"gap50":10,"gap40":8,"latest":84.7,"peak":84.7,"reached50":true,"lowconf":false,"ly":2023},{"iso":"TUN","name":"Tunisia","y10":2006,"y40":2012,"y50":2017,"gap50":11,"gap40":6,"latest":72.4,"peak":72.4,"reached50":true,"lowconf":false,"ly":2023},{"iso":"TUR","name":"Turkey","y10":2002,"y40":2011,"y50":2014,"gap50":12,"gap40":9,"latest":87.3,"peak":87.3,"reached50":true,"lowconf":false,"ly":2024},{"iso":"TUV","name":"Tuvalu","y10":2007,"y40":2018,"y50":2019,"gap50":12,"gap40":11,"latest":74.3,"peak":74.3,"reached50":true,"lowconf":false,"ly":2023},{"iso":"TZA","name":"Tanzania","y10":2015,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":29.1,"peak":29.1,"reached50":false,"lowconf":false,"ly":2023},{"iso":"UGA","name":"Uganda","y10":2021,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":8.9,"peak":15.3,"reached50":false,"lowconf":false,"ly":2024},{"iso":"UKR","name":"Ukraine","y10":2008,"y40":2013,"y50":2016,"gap50":8,"gap40":5,"latest":82.4,"peak":82.4,"reached50":true,"lowconf":false,"ly":2023},{"iso":"URY","name":"Uruguay","y10":2000,"y40":2009,"y50":2011,"gap50":11,"gap40":9,"latest":92.0,"peak":92.0,"reached50":true,"lowconf":false,"ly":2024},{"iso":"USA","name":"United States","y10":1996,"y40":2000,"y50":2002,"gap50":6,"gap40":4,"latest":93.1,"peak":93.1,"reached50":true,"lowconf":false,"ly":2023},{"iso":"UZB","name":"Uzbekistan","y10":2009,"y40":2015,"y50":2018,"gap50":9,"gap40":6,"latest":89.0,"peak":89.0,"reached50":true,"lowconf":false,"ly":2023},{"iso":"VCT","name":"Saint Vincent and the Grenadines","y10":2006,"y40":2012,"y50":2016,"gap50":10,"gap40":6,"latest":76.0,"peak":76.0,"reached50":true,"lowconf":false,"ly":2023},{"iso":"VEN","name":"Venezuela","y10":2005,"y40":2011,"y50":2013,"gap50":8,"gap40":6,"latest":61.6,"peak":61.6,"reached50":true,"lowconf":false,"ly":2017},{"iso":"VGB","name":"British Virgin Islands","y10":2002,"y40":2016,"y50":2016,"gap50":14,"gap40":14,"latest":77.7,"peak":77.7,"reached50":true,"lowconf":true,"ly":2017},{"iso":"VNM","name":"Vietnam","y10":2005,"y40":2014,"y50":2016,"gap50":11,"gap40":9,"latest":84.2,"peak":84.2,"reached50":true,"lowconf":false,"ly":2024},{"iso":"VUT","name":"Vanuatu","y10":2012,"y40":2020,"y50":null,"gap50":null,"gap40":8,"latest":45.7,"peak":45.7,"reached50":false,"lowconf":false,"ly":2023},{"iso":"WSM","name":"Samoa","y10":2011,"y40":2018,"y50":2020,"gap50":9,"gap40":7,"latest":58.1,"peak":58.1,"reached50":true,"lowconf":false,"ly":2023},{"iso":"YEM","name":"Yemen","y10":2010,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":13.8,"peak":26.7,"reached50":false,"lowconf":false,"ly":2020},{"iso":"ZAF","name":"South Africa","y10":2009,"y40":2012,"y50":2015,"gap50":6,"gap40":3,"latest":75.7,"peak":75.7,"reached50":true,"lowconf":false,"ly":2023},{"iso":"ZMB","name":"Zambia","y10":2016,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":33.0,"peak":33.0,"reached50":false,"lowconf":false,"ly":2023},{"iso":"ZWE","name":"Zimbabwe","y10":2012,"y40":null,"y50":null,"gap50":null,"gap40":null,"latest":38.4,"peak":38.4,"reached50":false,"lowconf":false,"ly":2023}],"num2iso":{"533":"ABW","4":"AFG","24":"AGO","8":"ALB","20":"AND","784":"ARE","32":"ARG","51":"ARM","16":"ASM","28":"ATG","36":"AUS","40":"AUT","31":"AZE","108":"BDI","56":"BEL","204":"BEN","854":"BFA","50":"BGD","100":"BGR","48":"BHR","44":"BHS","70":"BIH","112":"BLR","84":"BLZ","60":"BMU","68":"BOL","76":"BRA","52":"BRB","96":"BRN","64":"BTN","72":"BWA","140":"CAF","124":"CAN","756":"CHE","152":"CHL","156":"CHN","384":"CIV","120":"CMR","180":"COD","178":"COG","170":"COL","174":"COM","132":"CPV","188":"CRI","192":"CUB","531":"CUW","136":"CYM","196":"CYP","203":"CZE","276":"DEU","262":"DJI","212":"DMA","208":"DNK","214":"DOM","12":"DZA","218":"ECU","818":"EGY","232":"ERI","724":"ESP","233":"EST","231":"ETH","246":"FIN","242":"FJI","250":"FRA","234":"FRO","583":"FSM","266":"GAB","826":"GBR","268":"GEO","288":"GHA","292":"GIB","324":"GIN","270":"GMB","624":"GNB","226":"GNQ","300":"GRC","308":"GRD","304":"GRL","320":"GTM","328":"GUY","340":"HND","191":"HRV","332":"HTI","348":"HUN","360":"IDN","356":"IND","372":"IRL","364":"IRN","368":"IRQ","352":"ISL","376":"ISR","380":"ITA","388":"JAM","400":"JOR","392":"JPN","398":"KAZ","404":"KEN","417":"KGZ","116":"KHM","296":"KIR","659":"KNA","410":"KOR","414":"KWT","418":"LAO","422":"LBN","430":"LBR","434":"LBY","662":"LCA","438":"LIE","144":"LKA","426":"LSO","440":"LTU","442":"LUX","428":"LVA","504":"MAR","492":"MCO","498":"MDA","450":"MDG","462":"MDV","484":"MEX","584":"MHL","807":"MKD","466":"MLI","470":"MLT","104":"MMR","499":"MNE","496":"MNG","508":"MOZ","478":"MRT","480":"MUS","454":"MWI","458":"MYS","516":"NAM","540":"NCL","562":"NER","566":"NGA","558":"NIC","528":"NLD","578":"NOR","524":"NPL","520":"NRU","554":"NZL","512":"OMN","383":"OWID_KOS","586":"PAK","591":"PAN","604":"PER","608":"PHL","585":"PLW","598":"PNG","616":"POL","630":"PRI","408":"PRK","620":"PRT","600":"PRY","275":"PSE","258":"PYF","634":"QAT","642":"ROU","643":"RUS","646":"RWA","682":"SAU","729":"SDN","686":"SEN","702":"SGP","90":"SLB","694":"SLE","222":"SLV","674":"SMR","706":"SOM","688":"SRB","728":"SSD","678":"STP","740":"SUR","703":"SVK","705":"SVN","752":"SWE","748":"SWZ","690":"SYC","760":"SYR","148":"TCD","768":"TGO","764":"THA","762":"TJK","795":"TKM","626":"TLS","776":"TON","780":"TTO","788":"TUN","792":"TUR","798":"TUV","834":"TZA","800":"UGA","804":"UKR","858":"URY","840":"USA","860":"UZB","670":"VCT","862":"VEN","92":"VGB","704":"VNM","548":"VUT","882":"WSM","887":"YEM","710":"ZAF","894":"ZMB","716":"ZWE"}}, DOTS={"SGP":[103.8,1.35],"BHR":[50.5,26.0],"MLT":[14.4,35.9],"MCO":[7.4,43.7],"SMR":[12.45,43.94],"LIE":[9.52,47.14],"AND":[1.5,42.5],"MUS":[57.5,-20.3],"SYC":[55.5,-4.6],"MDV":[73.5,4.2],"CPV":[-23.6,16.0],"COM":[43.3,-11.6],"STP":[6.6,0.34],"ATG":[-61.8,17.1],"BRB":[-59.5,13.2],"DMA":[-61.37,15.41],"GRD":[-61.68,12.12],"KNA":[-62.7,17.3],"LCA":[-60.98,13.9],"VCT":[-61.2,13.2],"TTO":[-61.2,10.5],"BHS":[-77.4,25.0],"KIR":[173.0,1.4],"MHL":[171.2,7.1],"FSM":[158.2,6.9],"NRU":[166.9,-0.53],"PLW":[134.6,7.5],"WSM":[-172.1,-13.8],"TON":[-175.2,-21.2],"TUV":[179.2,-8.5],"VUT":[167.0,-15.4],"FJI":[178.1,-17.7],"BMU":[-64.75,32.3],"CYM":[-81.3,19.3],"VGB":[-64.6,18.4],"ABW":[-69.97,12.5],"CUW":[-69.0,12.2],"FRO":[-6.9,62.0],"GIB":[-5.35,36.14],"ASM":[-170.7,-14.3],"PYF":[-149.4,-17.6],"NCL":[165.6,-21.3],"HKG":[114.1,22.4]}, NUM2NAME={"533":"Aruba","4":"Afghanistan","24":"Angola","660":"Anguilla","248":"\u00c5land Islands","8":"Albania","20":"Andorra","784":"United Arab Emirates","32":"Argentina","51":"Armenia","16":"American Samoa","10":"Antarctica","260":"French Southern Territories","28":"Antigua and Barbuda","36":"Australia","40":"Austria","31":"Azerbaijan","108":"Burundi","56":"Belgium","204":"Benin","535":"Bonaire","854":"Burkina Faso","50":"Bangladesh","100":"Bulgaria","48":"Bahrain","44":"Bahamas","70":"Bosnia and Herzegovina","652":"Saint Barth\u00e9lemy","112":"Belarus","84":"Belize","60":"Bermuda","68":"Bolivia","76":"Brazil","52":"Barbados","96":"Brunei Darussalam","64":"Bhutan","74":"Bouvet Island","72":"Botswana","140":"Central African Republic","124":"Canada","166":"Cocos (Keeling) Islands","756":"Switzerland","152":"Chile","156":"China","384":"C\u00f4te d'Ivoire","120":"Cameroon","180":"Congo","178":"Congo","184":"Cook Islands","170":"Colombia","174":"Comoros","132":"Cabo Verde","188":"Costa Rica","192":"Cuba","531":"Cura\u00e7ao","162":"Christmas Island","136":"Cayman Islands","196":"Cyprus","203":"Czechia","276":"Germany","262":"Djibouti","212":"Dominica","208":"Denmark","214":"Dominican Republic","12":"Algeria","218":"Ecuador","818":"Egypt","232":"Eritrea","732":"Western Sahara","724":"Spain","233":"Estonia","231":"Ethiopia","246":"Finland","242":"Fiji","238":"Falkland Islands (Malvinas)","250":"France","234":"Faroe Islands","583":"Micronesia","266":"Gabon","826":"United Kingdom","268":"Georgia","831":"Guernsey","288":"Ghana","292":"Gibraltar","324":"Guinea","312":"Guadeloupe","270":"Gambia","624":"Guinea-Bissau","226":"Equatorial Guinea","300":"Greece","308":"Grenada","304":"Greenland","320":"Guatemala","254":"French Guiana","316":"Guam","328":"Guyana","344":"Hong Kong","334":"Heard Island and McDonald Islands","340":"Honduras","191":"Croatia","332":"Haiti","348":"Hungary","360":"Indonesia","833":"Isle of Man","356":"India","86":"British Indian Ocean Territory","372":"Ireland","364":"Iran","368":"Iraq","352":"Iceland","376":"Israel","380":"Italy","388":"Jamaica","832":"Jersey","400":"Jordan","392":"Japan","398":"Kazakhstan","404":"Kenya","417":"Kyrgyzstan","116":"Cambodia","296":"Kiribati","659":"Saint Kitts and Nevis","410":"Korea","414":"Kuwait","418":"Lao People's Democratic Republic","422":"Lebanon","430":"Liberia","434":"Libya","662":"Saint Lucia","438":"Liechtenstein","144":"Sri Lanka","426":"Lesotho","440":"Lithuania","442":"Luxembourg","428":"Latvia","446":"Macao","663":"Saint Martin (French part)","504":"Morocco","492":"Monaco","498":"Moldova","450":"Madagascar","462":"Maldives","484":"Mexico","584":"Marshall Islands","807":"North Macedonia","466":"Mali","470":"Malta","104":"Myanmar","499":"Montenegro","496":"Mongolia","580":"Northern Mariana Islands","508":"Mozambique","478":"Mauritania","500":"Montserrat","474":"Martinique","480":"Mauritius","454":"Malawi","458":"Malaysia","175":"Mayotte","516":"Namibia","540":"New Caledonia","562":"Niger","574":"Norfolk Island","566":"Nigeria","558":"Nicaragua","570":"Niue","528":"Netherlands","578":"Norway","524":"Nepal","520":"Nauru","554":"New Zealand","512":"Oman","586":"Pakistan","591":"Panama","612":"Pitcairn","604":"Peru","608":"Philippines","585":"Palau","598":"Papua New Guinea","616":"Poland","630":"Puerto Rico","408":"Korea","620":"Portugal","600":"Paraguay","275":"Palestine","258":"French Polynesia","634":"Qatar","638":"R\u00e9union","642":"Romania","643":"Russian Federation","646":"Rwanda","682":"Saudi Arabia","729":"Sudan","686":"Senegal","702":"Singapore","239":"South Georgia and the South Sandwich Islands","654":"Saint Helena","744":"Svalbard and Jan Mayen","90":"Solomon Islands","694":"Sierra Leone","222":"El Salvador","674":"San Marino","706":"Somalia","666":"Saint Pierre and Miquelon","688":"Serbia","728":"South Sudan","678":"Sao Tome and Principe","740":"Suriname","703":"Slovakia","705":"Slovenia","752":"Sweden","748":"Eswatini","534":"Sint Maarten (Dutch part)","690":"Seychelles","760":"Syrian Arab Republic","796":"Turks and Caicos Islands","148":"Chad","768":"Togo","764":"Thailand","762":"Tajikistan","772":"Tokelau","795":"Turkmenistan","626":"Timor-Leste","776":"Tonga","780":"Trinidad and Tobago","788":"Tunisia","792":"T\u00fcrkiye","798":"Tuvalu","158":"Taiwan","834":"Tanzania","800":"Uganda","804":"Ukraine","581":"United States Minor Outlying Islands","858":"Uruguay","840":"United States","860":"Uzbekistan","336":"Holy See (Vatican City State)","670":"Saint Vincent and the Grenadines","862":"Venezuela","92":"Virgin Islands","850":"Virgin Islands","704":"Viet Nam","548":"Vanuatu","876":"Wallis and Futuna","882":"Samoa","887":"Yemen","710":"South Africa","894":"Zambia","716":"Zimbabwe","383":"Kosovo"};
-const DATA={}; RAW.countries.forEach(c=>DATA[c.iso]=c);
-const N2I=RAW.num2iso;
-const FAST=["KOR","CYM","CAN","SVK","KAZ","NOR","AUS","CHE","NZL","SWE"];
-const SLOW=["STP","EGY","PER","NIC","TJK","BOL","BLZ","THA","JAM","MEX"];
-const LEAP=["DJI","KHM","BWA","IRQ","MMR","BTN","GAB","SEN","LAO"];
-const SETS={fast:new Set(FAST),slow:new Set(SLOW),leap:new Set(LEAP)};
-const NEVER="#20252d",CENSOR="#5b4a2e",NODATA="#20252d",INPROG="#3c4658";
-const scale=d3.scaleLinear().domain([2,8,17]).range(["#17b8a6","#e9e0c9","#e8582c"]).clamp(true);
-
-let mode="g50",view="flat",year=null,highlight=null,playing=false,timer=null;
-let feats50=[],feats110=[],loaded=false,centroid={};
-
-const svg=d3.select("#map"),tip=d3.select("#tip"),app=d3.select("#app");
-let W=innerWidth,H=innerHeight;
-const projFlat=d3.geoNaturalEarth1();
-const projGlobe=d3.geoOrthographic().rotate([-12,-18]).clipAngle(90);
-let proj=projFlat,path=d3.geoPath(proj);
-const graticule=d3.geoGraticule10();
-const defs=svg.append("defs");
-const rg=defs.append("radialGradient").attr("id","ocean").attr("cx","42%").attr("cy","38%").attr("r","72%");
-rg.append("stop").attr("offset","0%").attr("stop-color","#12313a");
-rg.append("stop").attr("offset","62%").attr("stop-color","#0c1a22");
-rg.append("stop").attr("offset","100%").attr("stop-color","#070d12");
-const sphere=svg.append("path").attr("class","sphere").datum({type:"Sphere"});
-const gGrat=svg.append("path").attr("class","graticule");
-const gGeo=svg.append("g"),gDot=svg.append("g"),gLbl=svg.append("g");
-
-function feats(){return view==="flat"?feats50:feats110;}
-function gapOf(d){return mode==="g50"?d.gap50:d.gap40;}
-function ycOf(d){return mode==="g50"?d.y50:d.y40;}
-function baseColor(iso){const d=DATA[iso];if(!d)return NODATA;const g=gapOf(d);
-  if(g==null)return d.y10!=null?CENSOR:NEVER;return scale(g);}
-function waveColor(iso){const d=DATA[iso];if(!d)return NODATA;const yc=ycOf(d),g=gapOf(d);
-  if(yc!=null&&yc<=year)return scale(g);if(d.y10!=null&&d.y10<=year)return INPROG;return NEVER;}
-function colorOf(iso){return year!=null?waveColor(iso):baseColor(iso);}
-function inHi(iso){if(!highlight)return true;
-  if(highlight==="never"){const d=DATA[iso];return d&&!d.reached50&&d.y10!=null;}
-  return SETS[highlight].has(iso);}
-
-function bindGeo(){
-  gGeo.selectAll("path.land").data(feats(),d=>d.id).join(
-    en=>en.append("path").attr("class","land")
-        .on("mousemove",(e,d)=>{enterFeat(d);move(e);}).on("mouseleave",leave),
-    up=>up,ex=>ex.remove());
-}
-function fit(){
-  W=innerWidth;H=innerHeight;
-  if(view==="flat"){proj=projFlat;proj.fitExtent([[12,92],[W-12,H-84]],{type:"Sphere"});
-    sphere.attr("fill","#0e1116");svg.classed("globe",false);}
-  else{proj=projGlobe;const R=Math.min(W-40,H-150);
-    projGlobe.fitExtent([[(W-R)/2,(H-R)/2-6],[(W+R)/2,(H+R)/2-6]],{type:"Sphere"});
-    sphere.attr("fill","url(#ocean)");svg.classed("globe",true);}
-  path=d3.geoPath(proj);redraw();paint(false);
-}
-function onFront(lonlat){if(view==="flat")return true;const c=projGlobe.rotate();
-  return d3.geoDistance(lonlat,[-c[0],-c[1]])<1.57;}
-function redraw(){
-  sphere.attr("d",path);
-  gGrat.attr("d",view==="globe"?path(graticule):null);
-  gGeo.selectAll("path.land").attr("d",path);
-  gDot.selectAll("circle").attr("cx",d=>proj(DOTS[d])[0]).attr("cy",d=>proj(DOTS[d])[1])
-    .attr("display",d=>onFront(DOTS[d])?null:"none");
-  gLbl.selectAll("text").each(function(d){
-    const ll=labelPt(d);const p=proj(ll);const on=onFront(ll)&&p;
-    d3.select(this).attr("x",on?p[0]:-9999).attr("y",on?p[1]-9:-9999).attr("display",on?null:"none");
-  });
-}
-function styleGeo(sel,tf){
-  if(!highlight){sel.attr("stroke","#0e1116").attr("stroke-width",.4).attr("opacity",1);return;}
-  sel.attr("opacity",d=>tf(d)?1:.05)
-     .attr("stroke",d=>tf(d)?"#ffffff":"#0e1116").attr("stroke-width",d=>tf(d)?1.2:.3);
-  sel.filter(tf).raise();
-}
-function paint(anim){
-  const L=gGeo.selectAll("path.land");
-  (anim?L.transition().duration(420):L).attr("fill",d=>colorOf(d.__iso));
-  styleGeo(L,d=>inHi(d.__iso));
-  const D=gDot.selectAll("circle");
-  (anim?D.transition().duration(420):D).attr("fill",d=>colorOf(d))
-    .attr("r",d=>(highlight&&inHi(d))?6:4.2);
-  D.attr("opacity",d=>{if(!DATA[d])return .001;return highlight?(inHi(d)?1:.05):1;})
-   .attr("stroke",d=>(highlight&&inHi(d))?"#fff":"#0e1116").attr("stroke-width",d=>(highlight&&inHi(d))?1.4:.6);
-  D.filter(d=>highlight&&inHi(d)).raise();
-}
-
-// labels for the highlighted set (only fast/slow/leap; never = too many)
-function labelPt(iso){return DOTS[iso]||centroid[iso]||[0,0];}
-function buildLabels(){
-  const list=(highlight&&highlight!=="never")?[...SETS[highlight]]:[];
-  gLbl.selectAll("text").data(list,d=>d).join(
-    en=>{const t=en.append("text").attr("class","lbl");t.append("tspan");t.append("tspan").attr("class","v");return t;},
-    up=>up, ex=>ex.remove())
-    .each(function(iso){const d=DATA[iso];const g=gapOf(d);
-      const ts=d3.select(this).selectAll("tspan");
-      ts.filter((_,i)=>i===0).text(d.name+" ");
-      ts.filter((_,i)=>i===1).text(g!=null?g+"y":"");});
-}
-// ranked panel
-function buildRank(){
-  const rank=d3.select("#rank"),leg=d3.select("#legend");
-  if(!highlight){rank.classed("show",false);leg.style("display",null);return;}
-  leg.style("display","none");rank.classed("show",true);
-  let items,title;
-  if(highlight==="fast"){title="Fastest to 50%";items=FAST.map(i=>DATA[i]).sort((a,b)=>a.gap50-b.gap50);}
-  else if(highlight==="slow"){title="Slowest to 50%";items=SLOW.map(i=>DATA[i]).sort((a,b)=>b.gap50-a.gap50);}
-  else if(highlight==="leap"){title="Mobile-era leapfrog";items=LEAP.map(i=>DATA[i]).sort((a,b)=>a.gap50-b.gap50);}
-  else{items=Object.values(DATA).filter(d=>!d.reached50&&d.y10!=null).sort((a,b)=>(b.latest||0)-(a.latest||0));
-       title=items.length+" crossed 10%, never 50%";}
-  d3.select("#rankt").text(title);
-  const isNever=highlight==="never";
-  const rows=d3.select("#rankl").selectAll("div.ri").data(items,d=>d.iso).join(
-    en=>{const r=en.append("div").attr("class","ri");
-      r.append("span").attr("class","rk");r.append("span").attr("class","c");
-      r.append("span").attr("class","nm");r.append("span").attr("class","vv");return r;});
-  rows.select(".rk").text((d,i)=>isNever?"":(i+1));
-  rows.select(".c").style("background",d=>isNever?CENSOR:scale(d.gap50));
-  rows.select(".nm").text(d=>d.name);
-  rows.select(".vv").text(d=>isNever?(d.latest!=null?Math.round(d.latest)+"%":""):(d.gap50+"y"));
-}
-
-function tipHtml(iso){const d=DATA[iso];if(!d)return null;
-  const g=gapOf(d),tgt=mode==="g50"?50:40,yc=ycOf(d);
-  let r=`<div class="g"><span>Passed 10%</span><b>${d.y10??"—"}</b></div>`;
-  r+=`<div class="g"><span>Passed ${tgt}%</span><b>${yc??"never"}</b></div>`;
-  r+=`<div class="g"><span>Online${d.ly?" ("+d.ly+")":""}</span><b>${d.latest!=null?d.latest+"%":"—"}</b></div>`;
-  let big;
-  if(g!=null)big=`<div class="big">Went 10%→${tgt}% in <b>${g}</b> year${g==1?"":"s"}${d.lowconf?" *":""}</div>`;
-  else if(d.y10!=null)big=`<div class="big" style="color:var(--slow)">Crossed 10% in ${d.y10} — still under ${tgt}%</div>`;
-  else big=`<div class="big" style="color:var(--muted)">Never reached 10%</div>`;
-  return `<h3>${d.name}</h3>${r}${big}`;}
-function move(ev){tip.style("left",(ev.clientX+16)+"px").style("top",(ev.clientY+14)+"px");}
-function enter(iso){const h=tipHtml(iso);if(!h)return;tip.html(h).style("opacity",1);}
-function noData(nm){return `<h3>${nm}</h3><div class="big" style="color:var(--muted)">No data for this indicator</div>`;}
-function enterFeat(f){
-  if(f.__iso&&DATA[f.__iso]){tip.html(tipHtml(f.__iso)).style("opacity",1);return;}
-  const nm=(f.properties&&f.properties.name)||NUM2NAME[String(f.id)]||null;
-  if(nm)tip.html(noData(nm)).style("opacity",1);else leave();}
-function leave(){tip.style("opacity",0);}
-
-Promise.all([
-  d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json"),
-  d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
-]).then(([t50,t110])=>{
-  feats50=topojson.feature(t50,t50.objects.countries).features;
-  feats110=topojson.feature(t110,t110.objects.countries).features;
-  [feats50,feats110].forEach(fs=>fs.forEach(f=>f.__iso=N2I[String(f.id)]||N2I[String(+f.id)]||null));
-  feats50.forEach(f=>{if(f.__iso&&!centroid[f.__iso])centroid[f.__iso]=d3.geoCentroid(f);});
-  const dk=Object.keys(DOTS).filter(k=>DATA[k]);
-  gDot.selectAll("circle").data(dk).join("circle").attr("class","dot").attr("r",4.2)
-    .on("mousemove",(e,d)=>{enter(d);move(e);}).on("mouseleave",leave);
-  loaded=true;bindGeo();fit();
-}).catch(()=>{d3.select("#app").append("div").style("position","absolute").style("top","50%")
-   .style("left","0").style("width","100%").style("text-align","center").style("color","#9aa4b2")
-   .html("Map geometry could not load (offline?). Data is intact — reconnect and reload.");});
-
-// clean / hide-UI
-d3.select("#cleanbtn").on("click",function(){
-  const on=!app.classed("clean");app.classed("clean",on);
-  this.textContent=on?"Show UI":"Hide UI";
-});
-// view toggle
-let autorotate=false,spinning=false,dragging=false;
-d3.selectAll("#viewseg button").on("click",function(){
-  const v=this.dataset.v;if(v===view)return;
-  d3.selectAll("#viewseg button").classed("on",false);d3.select(this).classed("on",true);
-  view=v;bindGeo();fit();
-  if(view==="globe"){d3.select("#hint").classed("show",true);setTimeout(()=>d3.select("#hint").classed("show",false),3200);
-    autorotate=true;startSpin();}else{autorotate=false;}
-});
-function startSpin(){if(spinning)return;spinning=true;let last=0;
-  function tick(t){if(!autorotate||view!=="globe"){spinning=false;return;}
-    if(last){const r=projGlobe.rotate();projGlobe.rotate([r[0]+(t-last)*0.010,r[1]]);redraw();}
-    last=t;requestAnimationFrame(tick);}requestAnimationFrame(tick);}
-const drag=d3.drag()
-  .on("start",()=>{if(view!=="globe")return;dragging=true;autorotate=false;svg.classed("grab",true);})
-  .on("drag",(ev)=>{if(view!=="globe")return;const r=projGlobe.rotate(),k=.26;
-     let ph=Math.max(-89,Math.min(89,r[1]-ev.dy*k));projGlobe.rotate([r[0]+ev.dx*k,ph]);redraw();})
-  .on("end",()=>{dragging=false;svg.classed("grab",false);
-     if(view==="globe"){autorotate=true;startSpin();}});   // resume spinning the moment you let go
-svg.call(drag);
-// threshold
-d3.selectAll("#thresh button").on("click",function(){
-  d3.selectAll("#thresh button").classed("on",false);d3.select(this).classed("on",true);
-  mode=this.dataset.m;d3.select("#ythr").text(mode==="g50"?"50":"40");
-  buildLabels();buildRank();redraw();paint(true);if(year!=null)step();});
-// highlights
-d3.selectAll(".btn[data-h]").on("click",function(){
-  const h=this.dataset.h;highlight=(highlight===h)?null:h;
-  d3.selectAll(".btn[data-h]").classed("on",false);if(highlight)d3.select(this).classed("on",true);
-  if(year!=null)stopPlay();
-  buildLabels();buildRank();redraw();paint(true);});
-d3.select("#reset").on("click",()=>{highlight=null;year=null;stopPlay();
-  d3.selectAll(".btn[data-h]").classed("on",false);d3.select("#yearbox").classed("show",false);
-  app.classed("showyear",false);
-  buildLabels();buildRank();redraw();paint(true);});
-// wave
-const START=1995,END=2024;
-function stopPlay(){playing=false;clearInterval(timer);
-  d3.select("#play").html((year!=null&&year<END)?"▶ Resume":"▶ Play the wave");}
-d3.select("#play").on("click",()=>{
-  if(playing){stopPlay();return;}          // pause
-  const fresh=(year==null||year>=END);     // restart only if idle or finished
-  if(fresh){ highlight=null;d3.selectAll(".btn[data-h]").classed("on",false);buildLabels();buildRank();year=START; }
-  playing=true;app.classed("showyear",true);d3.select("#play").html("❚❚ Pause");
-  d3.select("#yearbox").classed("show",true);step();
-  timer=setInterval(()=>{year++;if(year>END){stopPlay();return;}step();},620);});
-function step(){d3.select("#yy").text(year);
-  let n=0;for(const k in DATA){const d=DATA[k],yc=ycOf(d);if(yc!=null&&yc<=year)n++;}
-  d3.select("#ycount").text(n);paint(true);}
-addEventListener("resize",()=>{if(loaded)fit();});
-</script>
+<script src="data/geo.js"></script>
+<script src="data/adoption.js"></script>
+<script src="data/events.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
