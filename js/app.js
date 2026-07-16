@@ -261,21 +261,28 @@ function exitTimelapse(){
   gFx.selectAll("circle").remove();
   updateLegend();updateCursor();
 }
+const CTRY_YEARS=new Set(EVENTS.filter(e=>e.iso).map(e=>e.y));
+let speedMult=1;
+function stepDelay(y){return (CTRY_YEARS.has(y)?1600:950)/speedMult;}
 function pausePlay(){playing=false;clearTimeout(timer);
   d3.select("#play").html((year!=null&&year<END)?"▶ Resume":"▶ Play 1990–2024");}
 function tickPlay(){
   if(!playing)return;
   if(year>=END){pausePlay();return;}
   setYear(year+1,true);
-  timer=setTimeout(tickPlay,EVYEARS.includes(year)?1700:640);
+  timer=setTimeout(tickPlay,stepDelay(year));
 }
 d3.select("#play").on("click",()=>{
   if(playing){pausePlay();return;}
   const fresh=(year==null||year>=END);
   if(year==null)enterTimelapse();
   playing=true;d3.select("#play").html("❚❚ Pause");
-  if(fresh){setYear(START,false);timer=setTimeout(tickPlay,EVYEARS.includes(START)?1700:900);}
+  if(fresh){setYear(START,false);timer=setTimeout(tickPlay,stepDelay(START));}
   else timer=setTimeout(tickPlay,300);
+});
+d3.select("#spd").on("click",function(){
+  speedMult=speedMult===1?2:1;
+  d3.select(this).text(speedMult+"×").classed("on",speedMult===2);
 });
 slider.addEventListener("input",()=>{
   if(year==null)enterTimelapse();
@@ -428,8 +435,8 @@ d3.selectAll("#layerseg button").on("click",function(){
   d3.selectAll("#layerseg button").classed("on",false);d3.select(this).classed("on",true);
   layer=l;
   const speedOn=layer==="speed";
-  d3.select("#thresh").style("display",speedOn?null:"none");
-  d3.select(".hgroup").style("display",speedOn?null:"none");
+  d3.select("#threshgrp").style("display",speedOn?null:"none");
+  d3.select("#hirow").style("display",speedOn?null:"none");
   if(!speedOn&&highlight){highlight=null;d3.selectAll(".btn[data-h]").classed("on",false);}
   d3.select(".foot").html(speedOn
     ?"Source: Our World in Data / ITU (2025)<br/>Fixed borders · colour = adoption speed"

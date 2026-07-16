@@ -37,27 +37,36 @@
   <div class="hint ov" id="hint">drag to spin the globe</div>
   <div class="ev" id="evcard"></div>
 
-  <div class="tl-wrap ov">
-    <div class="tlbar">
-      <input type="range" id="yslider" min="1990" max="2024" step="1" value="1990" aria-label="Year"/>
-      <div class="ticks" id="ticks"></div>
-    </div>
-    <div class="tlyrs"><span>1990</span><span>2024</span></div>
-  </div>
-
   <div class="controls ov">
-    <div class="seg" id="viewseg"><button data-v="flat" class="on">Flat map</button><button data-v="globe">3D globe</button></div>
-    <div class="seg" id="layerseg"><button data-l="speed" class="on">Speed</button><button data-l="net">% online</button><button data-l="mobile">Mobile</button><button data-l="bband">Broadband</button></div>
-    <div class="seg" id="thresh"><button data-m="g50" class="on">10 → 50%</button><button data-m="g40">10 → 40%</button></div>
-    <button class="btn play" id="play">▶ Play 1990–2024</button>
-    <span class="sep"></span>
-    <div class="hgroup">
+    <div class="tlrow" id="tlrow">
+      <span class="tly">1990</span>
+      <div class="tlbar">
+        <input type="range" id="yslider" min="1990" max="2024" step="1" value="1990" aria-label="Year"/>
+        <div class="ticks" id="ticks"></div>
+      </div>
+      <span class="tly">2024</span>
+      <button class="btn spd" id="spd" title="Playback speed">1×</button>
+    </div>
+    <div class="crow">
+      <div class="grp"><span class="gl">View</span>
+        <div class="seg" id="viewseg"><button data-v="flat" class="on">Flat map</button><button data-v="globe">3D globe</button></div>
+      </div>
+      <div class="grp"><span class="gl">Data</span>
+        <div class="seg" id="layerseg"><button data-l="speed" class="on">Speed</button><button data-l="net">% online</button><button data-l="mobile">Mobile</button><button data-l="bband">Broadband</button></div>
+      </div>
+      <div class="grp" id="threshgrp"><span class="gl">Race</span>
+        <div class="seg" id="thresh"><button data-m="g50" class="on">10 → 50%</button><button data-m="g40">10 → 40%</button></div>
+      </div>
+      <button class="btn play" id="play">▶ Play 1990–2024</button>
+      <button class="btn reset" id="reset">Reset</button>
+    </div>
+    <div class="crow" id="hirow">
+      <span class="gl">Highlight</span>
       <button class="btn h h-fast" data-h="fast"><span class="d"></span>Fastest</button>
       <button class="btn h h-slow" data-h="slow"><span class="d"></span>Slowest</button>
       <button class="btn h h-leap" data-h="leap"><span class="d"></span>Leapfrog</button>
       <button class="btn h h-never" data-h="never"><span class="d"></span>Never ½</button>
     </div>
-    <button class="btn reset" id="reset">Reset</button>
   </div>
 
   <div class="panel ov" id="legend">
