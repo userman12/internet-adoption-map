@@ -1,11 +1,13 @@
 /* The race to half online — map app.
    Data files (loaded before this script):
      data/adoption.js -> window.ADOPTION  (per-country annual series + threshold metrics)
+     data/metrics.js  -> window.METRICS   (mobile & fixed-broadband subs per 100, annual)
      data/geo.js      -> window.GEO       (topojson id -> iso, dot coords, id -> name)
      data/events.js   -> window.EVENTS    (curated internet-history milestones)         */
 
 const DATA={}; ADOPTION.countries.forEach(c=>DATA[c.iso]=c);
 const WORLD=ADOPTION.world||null;
+const MET=window.METRICS||{mobile:{},bband:{}};
 const N2I=GEO.num2iso, DOTS=GEO.dots, NUM2NAME=GEO.num2name;
 const FAST=["KOR","CYM","CAN","SVK","KAZ","NOR","AUS","CHE","NZL","SWE"];
 const SLOW=["STP","EGY","PER","NIC","TJK","BOL","BLZ","THA","JAM","MEX"];
@@ -13,13 +15,22 @@ const LEAP=["DJI","KHM","BWA","IRQ","MMR","BTN","GAB","SEN","LAO"];
 const SETS={fast:new Set(FAST),slow:new Set(SLOW),leap:new Set(LEAP)};
 const NEVER="#20252d",CENSOR="#5b4a2e",NODATA="#20252d";
 const scale=d3.scaleLinear().domain([2,8,17]).range(["#17b8a6","#e9e0c9","#e8582c"]).clamp(true);
-// % online ramp (dark-mode sequential, validated): 0% -> 100%
+// % online ramp (dark-mode sequential, validated): low -> high
 const PCT_STOPS=["#155449","#146b58","#158468","#16a084","#17b8a6","#6fdec4","#c8f7e6"];
-const pctScale=d3.scaleLinear()
-  .domain(PCT_STOPS.map((_,i)=>i*100/(PCT_STOPS.length-1))).range(PCT_STOPS).clamp(true);
+function rampFor(max){return d3.scaleLinear()
+  .domain(PCT_STOPS.map((_,i)=>i*max/(PCT_STOPS.length-1))).range(PCT_STOPS).clamp(true);}
+const SCALES={net:rampFor(100),mobile:rampFor(150),bband:rampFor(50)};
+// magnitude layers: label + legend end labels + tooltip row
+const LAYERS={
+  net:{lt:"Share of people online",lo:"0%",hi:"100%",row:"Online",unit:"%"},
+  mobile:{lt:"Mobile subscriptions / 100 people",lo:"0",hi:"150+",row:"Mobile subs",unit:" /100"},
+  bband:{lt:"Fixed broadband / 100 people",lo:"0",hi:"50+",row:"Fixed broadband",unit:" /100"}
+};
+// country-panel line colours (validated categorical trio on the panel surface)
+const LC={net:"#109184",mobile:"#b8842c",bband:"#6f83e6"};
 
 const START=1990,END=2024;
-let mode="g50",view="flat",year=null,highlight=null,playing=false,timer=null;
+let mode="g50",view="flat",layer="speed",year=null,highlight=null,playing=false,timer=null;
 let feats50=[],feats110=[],loaded=false,centroid={};
 
 const svg=d3.select("#map"),tip=d3.select("#tip"),app=d3.select("#app");
@@ -41,13 +52,21 @@ function feats(){return view==="flat"?feats50:feats110;}
 function gapOf(d){return mode==="g50"?d.gap50:d.gap40;}
 function ycOf(d){return mode==="g50"?d.y50:d.y40;}
 
-/* ── colour ────────────────────────────────────────────────────── */
+/* ── values & colour ───────────────────────────────────────────── */
 function valueAt(iso,yr){const d=DATA[iso];if(!d||yr<d.sy)return null;
   return d.v[Math.min(yr,END)-d.sy];}
+function metValueAt(kind,iso,yr){
+  if(kind==="net"||kind==="speed")return valueAt(iso,yr);
+  const s=MET[kind]&&MET[kind][iso];if(!s||yr<s.sy)return null;
+  return s.v[Math.min(yr,END)-s.sy];}
 function baseColor(iso){const d=DATA[iso];if(!d)return NODATA;const g=gapOf(d);
   if(g==null)return d.y10!=null?CENSOR:NEVER;return scale(g);}
-function pctColor(iso){const v=valueAt(iso,year);return v==null?NODATA:pctScale(v);}
-function colorOf(iso){return year!=null?pctColor(iso):baseColor(iso);}
+function colorOf(iso){
+  if(year!=null){const k=layer==="speed"?"net":layer,v=metValueAt(k,iso,year);
+    return v==null?NODATA:SCALES[k](v);}
+  if(layer==="speed")return baseColor(iso);
+  const v=metValueAt(layer,iso,END);
+  return v==null?NODATA:SCALES[layer](v);}
 function inHi(iso){if(!highlight)return true;
   if(highlight==="never"){const d=DATA[iso];return d&&!d.reached50&&d.y10!=null;}
   return SETS[highlight].has(iso);}
@@ -56,7 +75,8 @@ function inHi(iso){if(!highlight)return true;
 function bindGeo(){
   gGeo.selectAll("path.land").data(feats(),d=>d.id).join(
     en=>en.append("path").attr("class","land")
-        .on("mousemove",(e,d)=>{enterFeat(d);move(e);}).on("mouseleave",leave),
+        .on("mousemove",(e,d)=>{enterFeat(d);move(e);}).on("mouseleave",leave)
+        .on("click",(e,d)=>{if(d.__iso&&DATA[d.__iso])openPanel(d.__iso);}),
     up=>up,ex=>ex.remove());
 }
 function fit(){
@@ -103,7 +123,7 @@ function paint(anim){
   D.filter(d=>highlight&&inHi(d)).raise();
 }
 
-/* ── labels & rank panel ───────────────────────────────────────── */
+/* ── labels, rank panel, legends ───────────────────────────────── */
 function labelPt(iso){return DOTS[iso]||centroid[iso]||[0,0];}
 function buildLabels(){
   const list=(highlight&&highlight!=="never")?[...SETS[highlight]]:[];
@@ -115,10 +135,20 @@ function buildLabels(){
       ts.filter((_,i)=>i===0).text(d.name+" ");
       ts.filter((_,i)=>i===1).text(g!=null?g+"y":"");});
 }
+function updateLegend(){
+  const rankOn=!!highlight;
+  const mag=year!=null?(layer==="speed"?"net":layer):(layer!=="speed"?layer:null);
+  d3.select("#legend").style("display",(!rankOn&&!mag)?null:"none");
+  d3.select("#legend2").style("display",(!rankOn&&mag)?"block":"none");
+  if(mag){const L=LAYERS[mag];
+    d3.select("#l2t").text(L.lt);
+    d3.select("#l2a").text(L.lo);d3.select("#l2b").text(L.hi);
+    d3.select("#l2n").text(year!=null?"No data yet that year":"No data");}
+}
 function buildRank(){
-  const rank=d3.select("#rank"),leg=d3.select("#legend");
-  if(!highlight){rank.classed("show",false);leg.style("display",null);return;}
-  leg.style("display","none");rank.classed("show",true);
+  const rank=d3.select("#rank");
+  if(!highlight){rank.classed("show",false);updateLegend();return;}
+  rank.classed("show",true);updateLegend();
   let items,title;
   if(highlight==="fast"){title="Fastest to 50%";items=FAST.map(i=>DATA[i]).sort((a,b)=>a.gap50-b.gap50);}
   else if(highlight==="slow"){title="Slowest to 50%";items=SLOW.map(i=>DATA[i]).sort((a,b)=>b.gap50-a.gap50);}
@@ -146,6 +176,9 @@ function tipHtml(iso){const d=DATA[iso];if(!d)return null;
   r+=`<div class="g"><span>Passed 10%</span><b>${d.y10??"—"}</b></div>`;
   r+=`<div class="g"><span>Passed ${tgt}%</span><b>${yc??"never"}</b></div>`;
   r+=`<div class="g"><span>Online${d.ly?" ("+d.ly+")":""}</span><b>${d.latest!=null?d.latest+"%":"—"}</b></div>`;
+  if(layer==="mobile"||layer==="bband"){
+    const yr=year!=null?year:END,v=metValueAt(layer,iso,yr);
+    r+=`<div class="g"><span>${LAYERS[layer].row}${year!=null?" in "+year:""}</span><b>${v!=null?v+" /100":"—"}</b></div>`;}
   let big;
   if(g!=null)big=`<div class="big">Went 10%→${tgt}% in <b>${g}</b> year${g==1?"":"s"}${d.lowconf?" *":""}</div>`;
   else if(d.y10!=null)big=`<div class="big" style="color:var(--slow)">Crossed 10% in ${d.y10} — still under ${tgt}%</div>`;
@@ -211,13 +244,14 @@ function setYear(y,anim){
   d3.select("#ycount").text(n);
   const wv=WORLD&&year>=WORLD.sy?WORLD.v[Math.min(year,END)-WORLD.sy]:null;
   d3.select("#yworld").text(wv!=null?` · world ${Math.round(wv)}% online`:"");
-  updateEvents();paint(anim);
+  updateEvents();updateCursor();paint(anim);
 }
 function enterTimelapse(){
   highlight=null;d3.selectAll(".btn[data-h]").classed("on",false);
   buildLabels();buildRank();
   app.classed("tl",true).classed("showyear",true);
   d3.select("#yearbox").classed("show",true);
+  updateLegend();
 }
 function exitTimelapse(){
   year=null;shownEvYear=null;pausePlay();
@@ -225,6 +259,7 @@ function exitTimelapse(){
   d3.select("#yearbox").classed("show",false);
   d3.select("#evcard").classed("show",false);
   gFx.selectAll("circle").remove();
+  updateLegend();updateCursor();
 }
 function pausePlay(){playing=false;clearTimeout(timer);
   d3.select("#play").html((year!=null&&year<END)?"▶ Resume":"▶ Play 1990–2024");}
@@ -248,6 +283,102 @@ slider.addEventListener("input",()=>{
 });
 buildTicks();
 
+/* ── country panel ─────────────────────────────────────────────── */
+const CPW=288,CPH=150,CPM={t:10,r:8,b:16,l:26};
+let panelIso=null,cpX=null,cpY=null;
+
+function openPanel(iso){
+  if(!DATA[iso])return;
+  panelIso=iso;
+  app.classed("cp",true);
+  d3.select("#cpanel").classed("show",true);
+  renderPanel();
+}
+function closePanel(){
+  panelIso=null;
+  app.classed("cp",false);
+  d3.select("#cpanel").classed("show",false);
+}
+function cpSeries(kind){
+  const s=kind==="net"?DATA[panelIso]:(MET[kind]&&MET[kind][panelIso]);
+  if(!s||!s.v)return null;
+  return s.v.map((v,i)=>({yr:s.sy+i,v}));
+}
+function renderPanel(){
+  const d=DATA[panelIso];
+  d3.select("#cpname").text(d.name);
+  const tgt=mode==="g50"?50:40,yc=ycOf(d),g=gapOf(d);
+  let stat;
+  if(g!=null)stat=`10%→${tgt}% in <b>${g}</b> yr (${d.y10}→${yc})`;
+  else if(d.y10!=null)stat=`Crossed 10% in <b>${d.y10}</b> — still under ${tgt}%`;
+  else stat=`Never reached 10%`;
+  d3.select("#cpstats").html(`${stat} · now <b>${d.latest!=null?d.latest+"%":"—"}</b> online`+(d.lowconf?" · sparse data *":""));
+
+  const svgP=d3.select("#cpchart");svgP.selectAll("*").remove();
+  const series={net:cpSeries("net"),mobile:cpSeries("mobile"),bband:cpSeries("bband")};
+  const ymax=Math.max(100,...(series.mobile||[]).map(p=>p.v));
+  cpX=d3.scaleLinear().domain([START,END]).range([CPM.l,CPW-CPM.r]);
+  cpY=d3.scaleLinear().domain([0,ymax]).range([CPH-CPM.b,CPM.t]);
+  // grid + axes
+  const yt=ymax>150?[0,100,200]:(ymax>100?[0,50,100,150]:[0,50,100]);
+  const gAx=svgP.append("g");
+  yt.forEach(v=>{if(v>ymax)return;
+    gAx.append("line").attr("x1",CPM.l).attr("x2",CPW-CPM.r).attr("y1",cpY(v)).attr("y2",cpY(v)).attr("class","cpgrid");
+    gAx.append("text").attr("x",CPM.l-5).attr("y",cpY(v)+3).attr("class","cpaxis").attr("text-anchor","end").text(v);});
+  [1990,2005,2024].forEach(v=>gAx.append("text").attr("x",cpX(v)).attr("y",CPH-3).attr("class","cpaxis")
+    .attr("text-anchor",v===1990?"start":v===END?"end":"middle").text(v));
+  // lines
+  const line=d3.line().x(p=>cpX(p.yr)).y(p=>cpY(p.v));
+  for(const k of ["bband","mobile","net"]){
+    if(!series[k])continue;
+    svgP.append("path").attr("d",line(series[k]))
+      .attr("fill","none").attr("stroke",LC[k]).attr("stroke-width",k==="net"?2.2:1.7)
+      .attr("stroke-linejoin","round").attr("opacity",k==="net"?1:.9);
+  }
+  // threshold markers on the internet line
+  if(series.net){
+    [[d.y10,10],[yc,tgt]].forEach(([yrr])=>{
+      if(yrr==null)return;
+      const p=series.net.find(p=>p.yr===yrr);if(!p)return;
+      svgP.append("circle").attr("cx",cpX(p.yr)).attr("cy",cpY(p.v)).attr("r",3.2)
+        .attr("fill","#17b8a6").attr("stroke","#0e1116").attr("stroke-width",1.2);});
+  }
+  // national events: amber markers pinned to the internet line
+  const evs=EVENTS.filter(e=>e.iso&&e.iso.includes(panelIso));
+  evs.forEach(e=>{
+    const p=series.net&&series.net.find(p=>p.yr===e.y);
+    svgP.append("circle").attr("cx",cpX(e.y)).attr("cy",p?cpY(p.v):CPH-CPM.b).attr("r",3.4)
+      .attr("fill","#e6b34a").attr("stroke","#0e1116").attr("stroke-width",1.2)
+      .append("title").text(e.y+" — "+e.t);});
+  d3.select("#cpev").html(evs.length
+    ?evs.map(e=>`<div class="cpe"><span>${e.y}</span>${e.t}</div>`).join("")
+    :"");
+  // timelapse cursor + hover crosshair
+  svgP.append("line").attr("id","cpcursor").attr("y1",CPM.t).attr("y2",CPH-CPM.b)
+    .attr("stroke","#17b8a6").attr("stroke-width",1).attr("stroke-dasharray","2 2").attr("display","none");
+  svgP.append("line").attr("id","cphover").attr("y1",CPM.t).attr("y2",CPH-CPM.b)
+    .attr("stroke","#5c6572").attr("stroke-width",1).attr("display","none");
+  svgP.append("rect").attr("x",CPM.l).attr("y",CPM.t)
+    .attr("width",CPW-CPM.l-CPM.r).attr("height",CPH-CPM.t-CPM.b)
+    .attr("fill","transparent")
+    .on("mousemove",function(ev){
+      const yr=Math.round(cpX.invert(d3.pointer(ev,this)[0]));
+      d3.select("#cphover").attr("display",null).attr("x1",cpX(yr)).attr("x2",cpX(yr));
+      const f=(k,u)=>{const v=metValueAt(k,panelIso,yr);return v!=null?v+u:"—";};
+      d3.select("#cpread").html(`<b>${yr}</b> · online ${f("net","%")} · mob ${f("mobile","")} · bb ${f("bband","")}`);})
+    .on("mouseleave",()=>{d3.select("#cphover").attr("display","none");
+      d3.select("#cpread").html("hover the chart for yearly values");});
+  d3.select("#cpread").html("hover the chart for yearly values");
+  updateCursor();
+}
+function updateCursor(){
+  if(!panelIso||!cpX)return;
+  d3.select("#cpcursor").attr("display",year!=null?null:"none");
+  if(year!=null)d3.select("#cpcursor").attr("x1",cpX(year)).attr("x2",cpX(year));
+}
+d3.select("#cpx").on("click",closePanel);
+addEventListener("keydown",e=>{if(e.key==="Escape")closePanel();});
+
 /* ── boot: load geometry ───────────────────────────────────────── */
 Promise.all([
   d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json"),
@@ -259,7 +390,8 @@ Promise.all([
   feats50.forEach(f=>{if(f.__iso&&!centroid[f.__iso])centroid[f.__iso]=d3.geoCentroid(f);});
   const dk=Object.keys(DOTS).filter(k=>DATA[k]);
   gDot.selectAll("circle").data(dk).join("circle").attr("class","dot").attr("r",4.2)
-    .on("mousemove",(e,d)=>{enter(d);move(e);}).on("mouseleave",leave);
+    .on("mousemove",(e,d)=>{enter(d);move(e);}).on("mouseleave",leave)
+    .on("click",(e,d)=>openPanel(d));
   loaded=true;bindGeo();fit();
   const yq=+new URLSearchParams(location.search).get("y");
   if(yq>=START&&yq<=END){enterTimelapse();setYear(yq,false);pausePlay();}
@@ -267,7 +399,7 @@ Promise.all([
    .style("left","0").style("width","100%").style("text-align","center").style("color","#9aa4b2")
    .html("Map geometry could not load (offline?). Data is intact — reconnect and reload.");});
 
-/* ── chrome: clean mode, view, threshold, highlights, reset ────── */
+/* ── chrome: clean mode, view, layer, threshold, highlights ────── */
 d3.select("#cleanbtn").on("click",function(){
   const on=!app.classed("clean");app.classed("clean",on);
   this.textContent=on?"Show UI":"Hide UI";
@@ -291,16 +423,31 @@ const drag=d3.drag()
   .on("end",()=>{dragging=false;svg.classed("grab",false);
      if(view==="globe"){autorotate=true;startSpin();}});
 svg.call(drag);
+d3.selectAll("#layerseg button").on("click",function(){
+  const l=this.dataset.l;if(l===layer)return;
+  d3.selectAll("#layerseg button").classed("on",false);d3.select(this).classed("on",true);
+  layer=l;
+  const speedOn=layer==="speed";
+  d3.select("#thresh").style("display",speedOn?null:"none");
+  d3.select(".hgroup").style("display",speedOn?null:"none");
+  if(!speedOn&&highlight){highlight=null;d3.selectAll(".btn[data-h]").classed("on",false);}
+  d3.select(".foot").html(speedOn
+    ?"Source: Our World in Data / ITU (2025)<br/>Fixed borders · colour = adoption speed"
+    :"Source: OWID/ITU · World Bank (2025)<br/>Fixed borders · latest value where series ends");
+  buildLabels();buildRank();redraw();paint(true);
+});
 d3.selectAll("#thresh button").on("click",function(){
   d3.selectAll("#thresh button").classed("on",false);d3.select(this).classed("on",true);
   mode=this.dataset.m;d3.select("#ythr").text(mode==="g50"?"50":"40");
-  buildLabels();buildRank();redraw();paint(true);if(year!=null)setYear(year,false);});
+  buildLabels();buildRank();redraw();paint(true);
+  if(year!=null)setYear(year,false);
+  if(panelIso)renderPanel();});
 d3.selectAll(".btn[data-h]").on("click",function(){
   const h=this.dataset.h;highlight=(highlight===h)?null:h;
   d3.selectAll(".btn[data-h]").classed("on",false);if(highlight)d3.select(this).classed("on",true);
   if(year!=null)exitTimelapse();
   buildLabels();buildRank();redraw();paint(true);});
-d3.select("#reset").on("click",()=>{highlight=null;exitTimelapse();
+d3.select("#reset").on("click",()=>{highlight=null;exitTimelapse();closePanel();
   d3.selectAll(".btn[data-h]").classed("on",false);
   buildLabels();buildRank();redraw();paint(true);});
 addEventListener("resize",()=>{if(loaded)fit();});

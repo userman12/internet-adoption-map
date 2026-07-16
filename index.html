@@ -47,6 +47,7 @@
 
   <div class="controls ov">
     <div class="seg" id="viewseg"><button data-v="flat" class="on">Flat map</button><button data-v="globe">3D globe</button></div>
+    <div class="seg" id="layerseg"><button data-l="speed" class="on">Speed</button><button data-l="net">% online</button><button data-l="mobile">Mobile</button><button data-l="bband">Broadband</button></div>
     <div class="seg" id="thresh"><button data-m="g50" class="on">10 → 50%</button><button data-m="g40">10 → 40%</button></div>
     <button class="btn play" id="play">▶ Play 1990–2024</button>
     <span class="sep"></span>
@@ -67,16 +68,30 @@
     <div class="lrow"><span class="sw" style="background:var(--never)"></span>No data / never 10%</div>
   </div>
   <div class="panel ov" id="legend2">
-    <div class="lt">Share of people online</div>
+    <div class="lt" id="l2t">Share of people online</div>
     <div class="bar pct"></div>
-    <div class="bl"><span>0%</span><span>100%</span></div>
-    <div class="lrow"><span class="sw" style="background:var(--never)"></span>No data yet that year</div>
+    <div class="bl"><span id="l2a">0%</span><span id="l2b">100%</span></div>
+    <div class="lrow"><span class="sw" style="background:var(--never)"></span><span id="l2n">No data yet that year</span></div>
+  </div>
+  <div class="cpanel ov" id="cpanel">
+    <button class="cpx" id="cpx" aria-label="Close">×</button>
+    <h3 id="cpname"></h3>
+    <div class="cpstats" id="cpstats"></div>
+    <div class="cpread" id="cpread"></div>
+    <svg id="cpchart" width="288" height="150"></svg>
+    <div class="cplegend">
+      <span><i style="background:#109184"></i>Online %</span>
+      <span><i style="background:#b8842c"></i>Mobile /100</span>
+      <span><i style="background:#6f83e6"></i>Broadband /100</span>
+    </div>
+    <div class="cpev" id="cpev"></div>
   </div>
   <div class="panel ov" id="rank"><div class="lt" id="rankt"></div><div class="rl" id="rankl"></div></div>
 </div>
 <div class="tip" id="tip"></div>
 <script src="data/geo.js"></script>
 <script src="data/adoption.js"></script>
+<script src="data/metrics.js"></script>
 <script src="data/events.js"></script>
 <script src="js/app.js"></script>
 </body>
