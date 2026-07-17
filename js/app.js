@@ -136,14 +136,14 @@ function buildLabels(){
       ts.filter((_,i)=>i===1).text(g!=null?g+"y":"");});
 }
 function updateLegend(){
-  const rankOn=!!highlight;
-  const mag=year!=null?(layer==="speed"?"net":layer):(layer!=="speed"?layer:null);
+  const rankOn=!!highlight,tl=app.classed("tl");
+  const mag=tl?(layer==="speed"?"net":layer):(layer!=="speed"?layer:null);
   d3.select("#legend").style("display",(!rankOn&&!mag)?null:"none");
   d3.select("#legend2").style("display",(!rankOn&&mag)?"block":"none");
   if(mag){const L=LAYERS[mag];
     d3.select("#l2t").text(L.lt);
     d3.select("#l2a").text(L.lo);d3.select("#l2b").text(L.hi);
-    d3.select("#l2n").text(year!=null?"No data yet that year":"No data");}
+    d3.select("#l2n").text(tl?"No data yet that year":"No data");}
 }
 function buildRank(){
   const rank=d3.select("#rank");
@@ -246,12 +246,17 @@ function setYear(y,anim){
   d3.select("#yworld").text(wv!=null?` · world ${Math.round(wv)}% online`:"");
   updateEvents();updateCursor();paint(anim);
 }
+function updateTlPos(){
+  const f=document.getElementById("filters");
+  const edge=innerWidth<=820?14:26;
+  document.getElementById("tlrow").style.bottom=(f.offsetHeight+edge+10)+"px";
+}
 function enterTimelapse(){
   highlight=null;d3.selectAll(".btn[data-h]").classed("on",false);
   buildLabels();buildRank();
   app.classed("tl",true).classed("showyear",true);
   d3.select("#yearbox").classed("show",true);
-  updateLegend();
+  updateLegend();updateTlPos();
 }
 function exitTimelapse(){
   year=null;shownEvYear=null;pausePlay();
@@ -411,14 +416,22 @@ d3.select("#cleanbtn").on("click",function(){
   const on=!app.classed("clean");app.classed("clean",on);
   this.textContent=on?"Show UI":"Hide UI";
 });
-let autorotate=false,spinning=false,dragging=false;
+let autorotate=false,spinning=false,dragging=false,spinOn=true;
+function setSpin(on){
+  spinOn=on;
+  d3.select("#spinbtn").html(on?"⏸ Spin":"▶ Spin").classed("on",on);
+  autorotate=on&&view==="globe";
+  if(autorotate)startSpin();
+}
 d3.selectAll("#viewseg button").on("click",function(){
   const v=this.dataset.v;if(v===view)return;
   d3.selectAll("#viewseg button").classed("on",false);d3.select(this).classed("on",true);
   view=v;bindGeo();fit();
+  d3.select("#spinbtn").style("display",view==="globe"?null:"none");
   if(view==="globe"){d3.select("#hint").classed("show",true);setTimeout(()=>d3.select("#hint").classed("show",false),3200);
-    autorotate=true;startSpin();}else{autorotate=false;}
+    setSpin(spinOn);}else{autorotate=false;}
 });
+d3.select("#spinbtn").on("click",()=>setSpin(!spinOn));
 function startSpin(){if(spinning)return;spinning=true;let last=0;
   function tick(t){if(!autorotate||view!=="globe"){spinning=false;return;}
     if(last){const r=projGlobe.rotate();projGlobe.rotate([r[0]+(t-last)*0.010,r[1]]);redraw();}
@@ -428,7 +441,7 @@ const drag=d3.drag()
   .on("drag",(ev)=>{if(view!=="globe")return;const r=projGlobe.rotate(),k=.26;
      let ph=Math.max(-89,Math.min(89,r[1]-ev.dy*k));projGlobe.rotate([r[0]+ev.dx*k,ph]);redraw();})
   .on("end",()=>{dragging=false;svg.classed("grab",false);
-     if(view==="globe"){autorotate=true;startSpin();}});
+     if(view==="globe"&&spinOn){autorotate=true;startSpin();}});
 svg.call(drag);
 d3.selectAll("#layerseg button").on("click",function(){
   const l=this.dataset.l;if(l===layer)return;
@@ -441,7 +454,7 @@ d3.selectAll("#layerseg button").on("click",function(){
   d3.select(".foot").html(speedOn
     ?"Source: Our World in Data / ITU (2025)<br/>Fixed borders · colour = adoption speed"
     :"Source: OWID/ITU · World Bank (2025)<br/>Fixed borders · latest value where series ends");
-  buildLabels();buildRank();redraw();paint(true);
+  buildLabels();buildRank();redraw();paint(true);updateTlPos();
 });
 d3.selectAll("#thresh button").on("click",function(){
   d3.selectAll("#thresh button").classed("on",false);d3.select(this).classed("on",true);
@@ -457,4 +470,4 @@ d3.selectAll(".btn[data-h]").on("click",function(){
 d3.select("#reset").on("click",()=>{highlight=null;exitTimelapse();closePanel();
   d3.selectAll(".btn[data-h]").classed("on",false);
   buildLabels();buildRank();redraw();paint(true);});
-addEventListener("resize",()=>{if(loaded)fit();});
+addEventListener("resize",()=>{if(loaded)fit();updateTlPos();});

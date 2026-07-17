@@ -37,28 +37,14 @@
   <div class="hint ov" id="hint">drag to spin the globe</div>
   <div class="ev" id="evcard"></div>
 
-  <div class="controls ov">
-    <div class="tlrow" id="tlrow">
-      <span class="tly">1990</span>
-      <div class="tlbar">
-        <input type="range" id="yslider" min="1990" max="2024" step="1" value="1990" aria-label="Year"/>
-        <div class="ticks" id="ticks"></div>
-      </div>
-      <span class="tly">2024</span>
-      <button class="btn spd" id="spd" title="Playback speed">1×</button>
-    </div>
+  <div class="controls ov" id="filters">
     <div class="crow">
-      <div class="grp"><span class="gl">View</span>
-        <div class="seg" id="viewseg"><button data-v="flat" class="on">Flat map</button><button data-v="globe">3D globe</button></div>
-      </div>
       <div class="grp"><span class="gl">Data</span>
         <div class="seg" id="layerseg"><button data-l="speed" class="on">Speed</button><button data-l="net">% online</button><button data-l="mobile">Mobile</button><button data-l="bband">Broadband</button></div>
       </div>
       <div class="grp" id="threshgrp"><span class="gl">Race</span>
         <div class="seg" id="thresh"><button data-m="g50" class="on">10 → 50%</button><button data-m="g40">10 → 40%</button></div>
       </div>
-      <button class="btn play" id="play">▶ Play 1990–2024</button>
-      <button class="btn reset" id="reset">Reset</button>
     </div>
     <div class="crow" id="hirow">
       <span class="gl">Highlight</span>
@@ -69,18 +55,41 @@
     </div>
   </div>
 
-  <div class="panel ov" id="legend">
-    <div class="lt">Years from 10% → 50%</div>
-    <div class="bar"></div>
-    <div class="bl"><span>2 yr · fast</span><span>17 yr · slow</span></div>
-    <div class="lrow"><span class="sw" style="background:var(--censor)"></span>Crossed 10%, still under 50%</div>
-    <div class="lrow"><span class="sw" style="background:var(--never)"></span>No data / never 10%</div>
+  <div class="tlfloat ov" id="tlrow">
+    <span class="tly">1990</span>
+    <div class="tlbar">
+      <input type="range" id="yslider" min="1990" max="2024" step="1" value="1990" aria-label="Year"/>
+      <div class="ticks" id="ticks"></div>
+    </div>
+    <span class="tly">2024</span>
+    <button class="btn spd" id="spd" title="Playback speed">1×</button>
   </div>
-  <div class="panel ov" id="legend2">
-    <div class="lt" id="l2t">Share of people online</div>
-    <div class="bar pct"></div>
-    <div class="bl"><span id="l2a">0%</span><span id="l2b">100%</span></div>
-    <div class="lrow"><span class="sw" style="background:var(--never)"></span><span id="l2n">No data yet that year</span></div>
+
+  <div class="rightcol ov">
+    <div class="panel" id="legend">
+      <div class="lt">Years from 10% → 50%</div>
+      <div class="bar"></div>
+      <div class="bl"><span>2 yr · fast</span><span>17 yr · slow</span></div>
+      <div class="lrow"><span class="sw" style="background:var(--censor)"></span>Crossed 10%, still under 50%</div>
+      <div class="lrow"><span class="sw" style="background:var(--never)"></span>No data / never 10%</div>
+    </div>
+    <div class="panel" id="legend2">
+      <div class="lt" id="l2t">Share of people online</div>
+      <div class="bar pct"></div>
+      <div class="bl"><span id="l2a">0%</span><span id="l2b">100%</span></div>
+      <div class="lrow"><span class="sw" style="background:var(--never)"></span><span id="l2n">No data yet that year</span></div>
+    </div>
+    <div class="panel" id="rank"><div class="lt" id="rankt"></div><div class="rl" id="rankl"></div></div>
+    <div class="panel pctl">
+      <div class="crow">
+        <div class="seg" id="viewseg"><button data-v="flat" class="on">Flat map</button><button data-v="globe">3D globe</button></div>
+        <button class="btn" id="spinbtn" style="display:none" title="Toggle globe rotation">⏸ Spin</button>
+      </div>
+      <div class="crow">
+        <button class="btn play" id="play">▶ Play 1990–2024</button>
+        <button class="btn reset" id="reset">Reset</button>
+      </div>
+    </div>
   </div>
   <div class="cpanel ov" id="cpanel">
     <button class="cpx" id="cpx" aria-label="Close">×</button>
@@ -95,7 +104,6 @@
     </div>
     <div class="cpev" id="cpev"></div>
   </div>
-  <div class="panel ov" id="rank"><div class="lt" id="rankt"></div><div class="rl" id="rankl"></div></div>
 </div>
 <div class="tip" id="tip"></div>
 <script src="data/geo.js"></script>
