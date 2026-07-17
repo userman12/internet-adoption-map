@@ -30,7 +30,7 @@ const LAYERS={
 const LC={net:"#109184",mobile:"#b8842c",bband:"#6f83e6"};
 
 const START=1990,END=2024;
-let mode="g50",view="flat",layer="speed",year=null,highlight=null,playing=false,timer=null;
+let mode="g50",view="globe",layer="speed",year=null,highlight=null,playing=false,timer=null;
 let feats50=[],feats110=[],loaded=false,centroid={};
 
 const svg=d3.select("#map"),tip=d3.select("#tip"),app=d3.select("#app");
@@ -330,9 +330,10 @@ d3.select("#play").on("click",()=>{
   if(fresh){setYear(START,false);timer=setTimeout(tickPlay,stepDelay(START));}
   else timer=setTimeout(tickPlay,300);
 });
+const SPEEDS=[1,2,0.5];
 d3.select("#spd").on("click",function(){
-  speedMult=speedMult===1?2:1;
-  d3.select(this).text(speedMult+"×").classed("on",speedMult===2);
+  speedMult=SPEEDS[(SPEEDS.indexOf(speedMult)+1)%SPEEDS.length];
+  d3.select(this).text(speedMult+"×").classed("on",speedMult!==1);
 });
 slider.addEventListener("input",()=>{
   if(year==null)enterTimelapse();
@@ -450,6 +451,9 @@ Promise.all([
     .on("mousemove",(e,d)=>{enter(d);move(e);}).on("mouseleave",leave)
     .on("click",(e,d)=>openPanel(d));
   loaded=true;bindGeo();bindCables();gCab.style("display","none");fit();
+  // globe is the default view: kick off the spin and show the drag hint
+  if(view==="globe"){setSpin(spinOn);
+    d3.select("#hint").classed("show",true);setTimeout(()=>d3.select("#hint").classed("show",false),3200);}
   const yq=+new URLSearchParams(location.search).get("y");
   if(yq>=START&&yq<=END){enterTimelapse();setYear(yq,false);pausePlay();}
 }).catch(()=>{d3.select("#app").append("div").style("position","absolute").style("top","50%")
@@ -481,7 +485,16 @@ function startSpin(){if(spinning)return;spinning=true;let last=0;
   function tick(t){if(!autorotate||view!=="globe"){spinning=false;return;}
     if(last){const r=projGlobe.rotate();projGlobe.rotate([r[0]+(t-last)*0.010,r[1]]);redraw();}
     last=t;requestAnimationFrame(tick);}requestAnimationFrame(tick);}
+// true only when the pointer is inside the globe disc, so grabbing the empty
+// space around it does nothing (accounts for the current zoom transform)
+function onGlobeSphere(ev){
+  if(view!=="globe")return false;
+  const [sx,sy]=d3.pointer(ev,svg.node()),t=d3.zoomTransform(svg.node());
+  const c=projGlobe.translate();
+  return Math.hypot((sx-t.x)/t.k-c[0],(sy-t.y)/t.k-c[1])<=projGlobe.scale();
+}
 const drag=d3.drag()
+  .filter(ev=>!ev.button&&onGlobeSphere(ev))
   .on("start",()=>{if(view!=="globe")return;dragging=true;autorotate=false;svg.classed("grab",true);})
   .on("drag",(ev)=>{if(view!=="globe")return;const r=projGlobe.rotate(),k=.26/zoomK;
      let ph=Math.max(-89,Math.min(89,r[1]-ev.dy*k));projGlobe.rotate([r[0]+ev.dx*k,ph]);redraw();})
