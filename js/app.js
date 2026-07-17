@@ -46,7 +46,10 @@ rg.append("stop").attr("offset","62%").attr("stop-color","#0c1a22");
 rg.append("stop").attr("offset","100%").attr("stop-color","#070d12");
 const sphere=svg.append("path").attr("class","sphere").datum({type:"Sphere"});
 const gGrat=svg.append("path").attr("class","graticule");
-const gGeo=svg.append("g"),gDot=svg.append("g"),gLbl=svg.append("g"),gFx=svg.append("g");
+const gGeo=svg.append("g"),gCab=svg.append("g").attr("id","cablelayer"),
+  gDot=svg.append("g"),gLbl=svg.append("g"),gFx=svg.append("g");
+let cablesOn=false;const cableTimers=new Map();
+const CABLE_END=Math.max(...(window.CABLES||[{rfs:0}]).map(c=>c.rfs));
 
 function feats(){return view==="flat"?feats50:feats110;}
 function gapOf(d){return mode==="g50"?d.gap50:d.gap40;}
@@ -94,6 +97,7 @@ function redraw(){
   sphere.attr("d",path);
   gGrat.attr("d",view==="globe"?path(graticule):null);
   gGeo.selectAll("path.land").attr("d",path);
+  if(cablesOn)gCab.selectAll("path.cable").attr("d",d=>path({type:"MultiLineString",coordinates:d.segs}));
   gDot.selectAll("circle").attr("cx",d=>proj(DOTS[d])[0]).attr("cy",d=>proj(DOTS[d])[1])
     .attr("display",d=>onFront(DOTS[d])?null:"none");
   gLbl.selectAll("text").each(function(d){
@@ -193,6 +197,43 @@ function enterFeat(f){
   if(nm)tip.html(noData(nm)).style("opacity",1);else leave();}
 function leave(){tip.style("opacity",0);}
 
+/* ── submarine cables overlay ─────────────────────────────────── */
+function cableTipHtml(c){
+  let r=`<div class="g"><span>Ready for service</span><b>${c.rfs}</b></div>`;
+  if(c.owners)r+=`<div class="g"><span>Owners</span><b style="font-weight:500;text-align:right;font-size:11px">${c.owners}</b></div>`;
+  return `<h3>${c.name}</h3>${r}`;
+}
+function bindCables(){
+  gCab.selectAll("path.cable").data(window.CABLES||[],d=>d.id).join("path")
+    .attr("class","cable laid")
+    .on("mousemove",(e,d)=>{tip.html(cableTipHtml(d)).style("opacity",1);move(e);})
+    .on("mouseleave",leave);
+}
+function updateCables(){
+  if(!cablesOn)return;
+  gCab.selectAll("path.cable").each(function(d){
+    const yr=year!=null?year:CABLE_END;
+    const p=d3.select(this);
+    if(d.rfs>yr){
+      clearTimeout(cableTimers.get(d.id));cableTimers.delete(d.id);
+      p.attr("class","cable unlaid");
+    }else if(year!=null&&d.rfs===yr){
+      p.attr("class","cable fresh");
+      clearTimeout(cableTimers.get(d.id));
+      cableTimers.set(d.id,setTimeout(()=>{if(year===yr)p.attr("class","cable laid");},1900));
+    }else{
+      clearTimeout(cableTimers.get(d.id));cableTimers.delete(d.id);
+      p.attr("class","cable laid");
+    }
+  });
+}
+d3.select("#cablesbtn").on("click",function(){
+  cablesOn=!cablesOn;
+  d3.select(this).classed("on",cablesOn);
+  gCab.style("display",cablesOn?null:"none");
+  if(cablesOn){redraw();updateCables();}
+});
+
 /* ── timelapse: year state, events, timeline ───────────────────── */
 const EVYEARS=[...new Set(EVENTS.map(e=>e.y))].sort((a,b)=>a-b);
 const slider=document.getElementById("yslider");
@@ -244,7 +285,7 @@ function setYear(y,anim){
   d3.select("#ycount").text(n);
   const wv=WORLD&&year>=WORLD.sy?WORLD.v[Math.min(year,END)-WORLD.sy]:null;
   d3.select("#yworld").text(wv!=null?` · world ${Math.round(wv)}% online`:"");
-  updateEvents();updateCursor();paint(anim);
+  updateEvents();updateCursor();updateCables();paint(anim);
 }
 function updateTlPos(){
   const f=document.getElementById("filters");
@@ -264,7 +305,7 @@ function exitTimelapse(){
   d3.select("#yearbox").classed("show",false);
   d3.select("#evcard").classed("show",false);
   gFx.selectAll("circle").remove();
-  updateLegend();updateCursor();
+  updateLegend();updateCursor();updateCables();
 }
 const CTRY_YEARS=new Set(EVENTS.filter(e=>e.iso).map(e=>e.y));
 let speedMult=1;
@@ -404,7 +445,7 @@ Promise.all([
   gDot.selectAll("circle").data(dk).join("circle").attr("class","dot").attr("r",4.2)
     .on("mousemove",(e,d)=>{enter(d);move(e);}).on("mouseleave",leave)
     .on("click",(e,d)=>openPanel(d));
-  loaded=true;bindGeo();fit();
+  loaded=true;bindGeo();bindCables();gCab.style("display","none");fit();
   const yq=+new URLSearchParams(location.search).get("y");
   if(yq>=START&&yq<=END){enterTimelapse();setYear(yq,false);pausePlay();}
 }).catch(()=>{d3.select("#app").append("div").style("position","absolute").style("top","50%")

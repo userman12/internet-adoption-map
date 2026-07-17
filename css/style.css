@@ -16,6 +16,13 @@ svg.globe{cursor:grab} svg.globe.grab{cursor:grabbing}
 .pulse{fill:none;stroke:var(--accent);stroke-width:2px;pointer-events:none;animation:pulse 1.15s ease-out 2 forwards}
 @keyframes pulse{0%{r:6px;stroke-opacity:.95}100%{r:36px;stroke-opacity:0}}
 
+.cable{fill:none;stroke:#5b9ce8;stroke-linecap:round;stroke-linejoin:round;pointer-events:stroke;cursor:pointer;
+  transition:stroke-opacity .5s,stroke-width .3s}
+.cable.laid{stroke-opacity:.38;stroke-width:1px}
+.cable.laid:hover{stroke-opacity:.9;stroke-width:1.6px}
+.cable.fresh{stroke-opacity:.95;stroke-width:1.8px;filter:drop-shadow(0 0 3px rgba(91,156,232,.85))}
+.cable.unlaid{stroke-opacity:0;stroke-width:1px}
+
 .ov{transition:opacity .35s} /* overlays that clean-mode hides */
 #app.clean .ov{opacity:0 !important;pointer-events:none !important}
 
@@ -56,6 +63,7 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:30px;line-height
 .h-slow{--c:#e8582c;--cbg:rgba(232,88,44,.15)}
 .h-leap{--c:#e6b34a;--cbg:rgba(230,179,74,.15)}
 .h-never{--c:#9aa4b2;--cbg:rgba(154,164,178,.14)}
+.h-cable{--c:#5b9ce8;--cbg:rgba(91,156,232,.15)}
 .btn.reset{color:#7d8794}
 .btn.reset:hover{color:var(--ink);border-color:#3a4552}
 
