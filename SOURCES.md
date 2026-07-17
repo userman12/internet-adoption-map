@@ -1,0 +1,197 @@
+# Fonti dei dati
+
+Tutte le fonti del progetto Internet Adoption Map sono pubbliche, scaricabili e riproducibili tramite gli script Python inclusi nel repo.
+
+## 1. Penetrazione internet (% popolazione online)
+
+**Fonte primaria:** [Our World in Data](https://ourworldindata.org/grapher/share-of-individuals-using-the-internet) / International Telecommunication Union (ITU), edizione 2025
+
+**Aggiornamento:** Eseguire `python3 scripts/build_data.py`
+- Scarica il CSV da OWID
+- Genera `data/adoption.js` con serie annuali per 213 paesi (1990–2024)
+- Calcola metriche di soglia: anni per passare da 10%→50%, 10%→40%, ecc.
+- Per ogni paese: primo anno con dati disponibili, anno di raggiungimento del 10% e del 50%, velocità (2–17 anni)
+
+**Copertura:**
+- 213 paesi e territori
+- Anni: 1990–2024
+- Valore di base: percentuale annuale di persone che usano internet
+
+**Nota:** I valori sono aggiunti via interpolazione lineare tra i dati ITU disponibili (che spesso sono saltuari), mantenendo costante il valore finale quando la serie termina prima del 2024.
+
+---
+
+## 2. Sottoscrizioni mobili e banda larga fissa
+
+**Fonte:** [World Bank Open Data API](https://data.worldbank.org)
+
+**Indicatori:**
+- `IT.CEL.SETS.P2` — Sottoscrizioni cellulari per 100 persone
+- `IT.NET.BBND.P2` — Sottoscrizioni banda larga fissa per 100 persone
+
+**Aggiornamento:** Eseguire `python3 scripts/build_data.py`
+- Scarica via API (con retry e User-Agent header)
+- Genera `data/metrics.js` con serie per 195 paesi (anni variabili, spesso 1990+)
+- Valori: per 100 persone (es. 120 = 1.2 sottoscrizioni pro capite)
+
+**Copertura:**
+- Copertura mondiale per paesi con dati disponibili
+- Anni: varia per paese, ma principalmente 1990–2024
+- Due metriche indipendenti per capire la penetrazione di tecnologie diverse
+
+---
+
+## 3. Cavi sottomarini
+
+**Fonte:** [TeleGeography Submarine Cable Map](https://github.com/delusan/www.submarinecablemap.com) (mirror pubblico)
+
+**Dati:**
+- 263 cavi sottomarini
+- Per ogni cavo: id, nome, anno di Ready-For-Service (RFS), proprietari, geometria (rotte come MultiLineString)
+- File: `all.json` (metadati) e `cables-geo.json` (geometrie GeoJSON)
+
+**Aggiornamento:** Eseguire `python3 scripts/build_cables.py`
+- Scarica da TeleGeography mirror
+- Semplifica la densità dei punti (~0.15° di thinning) per ridurre la payload
+- Calcola le rotte per cavo
+- Genera `data/cables.js` (88 KB, file JS puro)
+
+**Nota importante:** Questo è uno snapshot storico congelato. Gli anni RFS vanno dal 1989 al 2015 e non vengono aggiornati in tempo reale. I cavi moderni (2016–2024) non sono presenti — se necessario aggiornare, il mirror upstream è la fonte.
+
+**Visualizzazione:** I cavi appaiono sulla mappa quando la timelapse raggiunge il loro anno RFS, con uno stato visivo che cambia da "laid" (posato) a "fresh" (nuovo, con glow) e infine "unlaid" (futuro).
+
+---
+
+## 4. Eventi storici di internet
+
+**Fonte:** Curati manualmente in `data/events.js`
+
+**Struttura:**
+- 52 milestone (1990–2024)
+- Almeno una per anno, massimo due (per evitare sovraccarico visivo)
+- Globali o specifici per paese (con array `iso`)
+- Fonte: letteratura storica su internet, stampa tech, rapporti ITU
+
+**Esempi:**
+- 1990: Disattivazione ARPANET, lancio del primo browser Web a CERN
+- 1993: Mosaic browser (primo browser grafico popolare)
+- 2001: Korea raggiunge il 50% online in 2 anni (10→50% più veloce della storia)
+- 2007: iPhone (nascita dell'era mobile)
+- 2016: Jio in India (centinaia di milioni di indiani vanno online)
+- 2024: 68% dell'umanità online
+
+**Descrizioni:** Una riga sintetica per ogni evento, leggibile nella card timelapse.
+
+---
+
+## 5. Geometrie geografiche
+
+**Fonte:** [world-atlas](https://github.com/topojson/world-atlas) tramite TopoJSON
+
+**Contenuto:**
+- Confini dei paesi (fixed borders a una data storica)
+- Coordinate di centroidi per piccole isole (`data/geo.js`)
+- Mapping tra TopoJSON ID numerici e codici ISO3 (ISO 3166-1 alpha-3)
+
+**Formato:** TopoJSON (geometrie compresse), convertite al volo da D3 in SVG paths per rendering.
+
+**Nota:** I confini sono fissi e storici — non rappresentano rivendicazioni contemporanee, ma consentono una coerenza visiva nel timelapse 1990–2024.
+
+---
+
+## 6. Topografia per proiezioni cartografiche
+
+**Fonte:** [Natural Earth Data](https://www.naturalearthmap.com/) (10m resolution)
+
+**Uso:**
+- Proiezione Natural Earth 1 (mappa piatta, meno distorsione ai poli)
+- Proiezione ortografica (globo 3D, draggabile)
+- Graticola geografica (10° × 10°)
+
+**Implementazione:** Caricate tramite D3.js
+
+---
+
+## Come aggiornare i dati
+
+### Penetrazione internet e metriche (mobile/broadband)
+```bash
+cd /path/to/world-internet-map
+python3 scripts/build_data.py
+```
+Richiede: Python 3, nessuna libreria esterna (usa urllib, json e csv stdlib).
+
+**Cosa fa:**
+1. Scarica CSV da OWID per penetrazione internet
+2. Scarica da World Bank API per mobile e banda larga
+3. Interpola linearmente gli anni mancanti
+4. Scrive `data/adoption.js` e `data/metrics.js`
+
+### Cavi sottomarini
+```bash
+cd /path/to/world-internet-map
+python3 scripts/build_cables.py
+```
+Richiede: Python 3, nessuna libreria esterna.
+
+**Cosa fa:**
+1. Scarica da TeleGeography mirror (all.json + cables-geo.json)
+2. Semplifica geometrie per ridurre dimensione file
+3. Scrive `data/cables.js`
+
+### Eventi storici
+Nessuno script: modificare manualmente `data/events.js`.
+- Aggiungere/rimuovere entry nella lista EVENTS
+- Mantenere l'ordine cronologico e il formato JSON
+- Massimo 2 per anno (in via di principio)
+- Testare la visualizzazione in locale
+
+---
+
+## Licenze e attribuzione
+
+- **Our World in Data**: CC BY 4.0 (richiede attribuzione)
+- **World Bank Data**: CC BY 4.0 (richiede attribuzione)
+- **TeleGeography**: Mirror pubblico, usato per scopi educativi / ricerca
+- **world-atlas (TopoJSON)**: Public Domain
+- **Natural Earth**: Public Domain
+
+Attribuzione visibile nel footer della mappa e nel README.
+
+---
+
+## Qualità e limitazioni dei dati
+
+### Penetrazione internet (OWID/ITU)
+- ✅ Migliore stima disponibile a livello globale per il periodo 1990–2024
+- ⚠️ I dati ITU sono spesso incomplete per paesi piccoli, isole remote, e conflitti
+- ⚠️ Definizione di "internet user" varia leggermente nel tempo
+- ⚠️ Alcuni paesi sono aggregati (es. ex Unione Sovietica) o mancanti (es. Corea del Nord)
+
+### Mobile e banda larga (World Bank)
+- ✅ Fonte ufficiale per le statistiche telecomunicazioni globali
+- ⚠️ Copertura discontinua: non tutti i paesi reportano ogni anno
+- ⚠️ "Sottoscrizioni" ≠ "utenti attivi" (alcuni hanno più di una sottoscrizione, altri zero)
+- ⚠️ Banda larga "fissa" non include mobile broadband (4G/5G)
+
+### Cavi sottomarini (TeleGeography)
+- ✅ Database più completo di cavi internazionali
+- ⚠️ Snapshot congelato al 2015, non aggiornato in tempo reale
+- ⚠️ Cavi post-2015 (es. Google Private Cables, Meta Global Express) non presenti
+- ⚠️ RFS = "ready-for-service" pianificato, non sempre coincide con attivazione effettiva
+
+### Eventi (curati manualmente)
+- ⚠️ Soggettivi: non esaustivi, scelti per importanza narrativa
+- ⚠️ Datazione approssimativa (anno, non giorno) per coerenza con granularità annuale timelapse
+
+---
+
+## Contatti e segnalazioni
+
+Per errori di dati, missing countries, o suggerimenti di nuovi milestone:
+- Aprire un'issue su GitHub
+- Verificare prima su OWID, World Bank, o TeleGeography che i dati sorgente siano corretti
+
+---
+
+*Ultimo aggiornamento: luglio 2026*
