@@ -41,6 +41,9 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:30px;line-height
 .rightcol .panel{position:static;width:auto}
 .pctl .crow+.crow{margin-top:9px}
 .pctl .btn.play{flex:1}
+.zoomctl{width:100%}
+.zoomctl button{flex:none;width:36px;font-size:15px;line-height:1}
+.zlvl{flex:1;text-align:center;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .crow{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
 .grp{display:flex;align-items:center;gap:7px}
 .grp .gl,.crow>.gl{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#5c6572;font-weight:600}
@@ -96,11 +99,11 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:30px;line-height
   background:linear-gradient(180deg,rgba(11,14,18,.92) 0%,rgba(11,14,18,.62) 34%,rgba(11,14,18,0) 100%)}
 .scrim.b{top:auto;bottom:0;height:150px;background:linear-gradient(0deg,rgba(11,14,18,.78) 0%,rgba(11,14,18,0) 100%)}
 
-/* ── timelapse timeline (floating bottom-centre bar) ────────────── */
-.tlfloat{display:none;position:absolute;left:30px;bottom:150px;z-index:7;
-  width:min(560px,54vw);align-items:center;gap:10px;
+/* ── timelapse timeline (floating bar, width/position synced to #filters via JS) ── */
+.tlfloat{display:none;position:absolute;z-index:7;
+  align-items:center;gap:10px;
   background:rgba(22,27,34,.82);backdrop-filter:blur(8px);border:1px solid var(--line);
-  border-radius:14px;padding:8px 14px}
+  border-radius:14px;padding:8px 14px;box-sizing:border-box}
 #app.tl .tlfloat{display:flex}
 #app.clean .tlfloat{display:none}
 .tly{font-size:10.5px;color:#5c6572;font-variant-numeric:tabular-nums;flex:none}
@@ -183,4 +186,4 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:30px;line-height
   .rightcol{right:14px;width:auto}.pctl{padding:9px 11px}
   .grp .gl,.crow>.gl{display:none}h1{font-size:23px}
   .year .yy{font-size:38px}.ev{width:220px;top:118px}
-  .tlfloat{left:14px;right:14px;width:auto;bottom:132px}}
+}

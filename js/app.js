@@ -44,10 +44,12 @@ const rg=defs.append("radialGradient").attr("id","ocean").attr("cx","42%").attr(
 rg.append("stop").attr("offset","0%").attr("stop-color","#12313a");
 rg.append("stop").attr("offset","62%").attr("stop-color","#0c1a22");
 rg.append("stop").attr("offset","100%").attr("stop-color","#070d12");
-const sphere=svg.append("path").attr("class","sphere").datum({type:"Sphere"});
-const gGrat=svg.append("path").attr("class","graticule");
-const gGeo=svg.append("g"),gCab=svg.append("g").attr("id","cablelayer"),
-  gDot=svg.append("g"),gLbl=svg.append("g"),gFx=svg.append("g");
+// everything geographic lives under viewport so zoom/pan is one transform, independent of proj math
+const viewport=svg.append("g").attr("class","viewport");
+const sphere=viewport.append("path").attr("class","sphere").datum({type:"Sphere"});
+const gGrat=viewport.append("path").attr("class","graticule");
+const gGeo=viewport.append("g"),gCab=viewport.append("g").attr("id","cablelayer"),
+  gDot=viewport.append("g"),gLbl=viewport.append("g"),gFx=viewport.append("g");
 let cablesOn=false;const cableTimers=new Map();
 const CABLE_END=Math.max(...(window.CABLES||[{rfs:0}]).map(c=>c.rfs));
 
@@ -288,9 +290,11 @@ function setYear(y,anim){
   updateEvents();updateCursor();updateCables();paint(anim);
 }
 function updateTlPos(){
-  const f=document.getElementById("filters");
-  const edge=innerWidth<=820?14:26;
-  document.getElementById("tlrow").style.bottom=(f.offsetHeight+edge+10)+"px";
+  const f=document.getElementById("filters").getBoundingClientRect();
+  const tl=document.getElementById("tlrow");
+  tl.style.left=f.left+"px";
+  tl.style.width=f.width+"px";
+  tl.style.bottom=(innerHeight-f.top+10)+"px";
 }
 function enterTimelapse(){
   highlight=null;d3.selectAll(".btn[data-h]").classed("on",false);
@@ -467,7 +471,7 @@ function setSpin(on){
 d3.selectAll("#viewseg button").on("click",function(){
   const v=this.dataset.v;if(v===view)return;
   d3.selectAll("#viewseg button").classed("on",false);d3.select(this).classed("on",true);
-  view=v;bindGeo();fit();
+  view=v;bindGeo();fit();resetZoom();
   d3.select("#spinbtn").style("display",view==="globe"?null:"none");
   if(view==="globe"){d3.select("#hint").classed("show",true);setTimeout(()=>d3.select("#hint").classed("show",false),3200);
     setSpin(spinOn);}else{autorotate=false;}
@@ -479,11 +483,28 @@ function startSpin(){if(spinning)return;spinning=true;let last=0;
     last=t;requestAnimationFrame(tick);}requestAnimationFrame(tick);}
 const drag=d3.drag()
   .on("start",()=>{if(view!=="globe")return;dragging=true;autorotate=false;svg.classed("grab",true);})
-  .on("drag",(ev)=>{if(view!=="globe")return;const r=projGlobe.rotate(),k=.26;
+  .on("drag",(ev)=>{if(view!=="globe")return;const r=projGlobe.rotate(),k=.26/zoomK;
      let ph=Math.max(-89,Math.min(89,r[1]-ev.dy*k));projGlobe.rotate([r[0]+ev.dx*k,ph]);redraw();})
   .on("end",()=>{dragging=false;svg.classed("grab",false);
      if(view==="globe"&&spinOn){autorotate=true;startSpin();}});
 svg.call(drag);
+
+/* ── zoom: wheel/pinch always; drag-to-pan only on the flat map so the
+   globe's own rotate-drag keeps the pointer ─────────────────────── */
+let zoomK=1;
+const zoomBeh=d3.zoom().scaleExtent([1,8])
+  .filter((ev)=>{
+    if(ev.type==="wheel")return true;
+    if(ev.button)return false;
+    if(ev.type==="touchstart")return ev.touches.length>1||view==="flat";
+    return view==="flat";
+  })
+  .on("zoom",(ev)=>{viewport.attr("transform",ev.transform);zoomK=ev.transform.k;
+    d3.select("#zlvl").text(Math.round(zoomK*100)+"%");});
+svg.call(zoomBeh).on("dblclick.zoom",null);
+function resetZoom(){svg.transition().duration(300).call(zoomBeh.transform,d3.zoomIdentity);}
+d3.select("#zoomin").on("click",()=>svg.transition().duration(200).call(zoomBeh.scaleBy,1.6));
+d3.select("#zoomout").on("click",()=>svg.transition().duration(200).call(zoomBeh.scaleBy,1/1.6));
 d3.selectAll("#layerseg button").on("click",function(){
   const l=this.dataset.l;if(l===layer)return;
   d3.selectAll("#layerseg button").classed("on",false);d3.select(this).classed("on",true);
@@ -508,7 +529,7 @@ d3.selectAll(".btn[data-h]").on("click",function(){
   d3.selectAll(".btn[data-h]").classed("on",false);if(highlight)d3.select(this).classed("on",true);
   if(year!=null)exitTimelapse();
   buildLabels();buildRank();redraw();paint(true);});
-d3.select("#reset").on("click",()=>{highlight=null;exitTimelapse();closePanel();
+d3.select("#reset").on("click",()=>{highlight=null;exitTimelapse();closePanel();resetZoom();
   d3.selectAll(".btn[data-h]").classed("on",false);
   buildLabels();buildRank();redraw();paint(true);});
-addEventListener("resize",()=>{if(loaded)fit();updateTlPos();});
+addEventListener("resize",()=>{if(loaded)fit();resetZoom();updateTlPos();});
