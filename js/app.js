@@ -91,7 +91,7 @@ function fit(){
   else{proj=projGlobe;const R=Math.min(W-40,H-150);
     projGlobe.fitExtent([[(W-R)/2,(H-R)/2-6],[(W+R)/2,(H+R)/2-6]],{type:"Sphere"});
     sphere.attr("fill","url(#ocean)");svg.classed("globe",true);}
-  path=d3.geoPath(proj);redraw();paint(false);
+  path=d3.geoPath(proj);syncZoomExtent();redraw();paint(false);
 }
 function onFront(lonlat){if(view==="flat")return true;const c=projGlobe.rotate();
   return d3.geoDistance(lonlat,[-c[0],-c[1]])<1.57;}
@@ -501,6 +501,10 @@ const zoomBeh=d3.zoom().scaleExtent([1,8])
   })
   .on("zoom",(ev)=>{viewport.attr("transform",ev.transform);zoomK=ev.transform.k;
     d3.select("#zlvl").text(Math.round(zoomK*100)+"%");});
+// lock pan to the map's own bounds: at 100% zoom there is zero slack, so panning
+// in then zooming back out always resolves to exactly the original framing
+function syncZoomExtent(){zoomBeh.extent([[0,0],[W,H]]).translateExtent([[0,0],[W,H]]);}
+syncZoomExtent();
 svg.call(zoomBeh).on("dblclick.zoom",null);
 function resetZoom(){svg.transition().duration(300).call(zoomBeh.transform,d3.zoomIdentity);}
 d3.select("#zoomin").on("click",()=>svg.transition().duration(200).call(zoomBeh.scaleBy,1.6));
