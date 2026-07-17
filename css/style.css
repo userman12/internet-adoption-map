@@ -40,6 +40,9 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:30px;line-height
   gap:10px;align-items:stretch;width:268px}
 .rightcol .panel{position:static;width:auto}
 .pctl .crow+.crow{margin-top:9px}
+.pctl .crow{flex-wrap:nowrap;gap:8px}
+.pctl #viewseg{flex:1;min-width:0}
+.pctl #spinbtn{flex:none;white-space:nowrap;padding-left:11px;padding-right:11px}
 .pctl .btn.play{flex:1}
 .zoomctl{width:100%}
 .zoomctl button{flex:none;width:36px;font-size:15px;line-height:1}
