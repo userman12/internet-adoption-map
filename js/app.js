@@ -561,8 +561,9 @@ d3.selectAll("#layerseg button").on("click",function(){
   d3.selectAll("#layerseg button").classed("on",false);d3.select(this).classed("on",true);
   layer=l;
   const speedOn=layer==="speed";
-  d3.select("#threshgrp").style("display",speedOn?null:"none");
-  d3.select("#hirow").style("display",speedOn?null:"none");
+  // dim rather than hide, so the panel never changes size on layer switch
+  d3.select("#threshgrp").classed("dis",!speedOn);
+  d3.select("#hirow").classed("dis",!speedOn);
   if(!speedOn&&highlight){highlight=null;d3.selectAll(".btn[data-h]").classed("on",false);}
   const FOOT={
     speed:"Source: Our World in Data / ITU (2025)<br/>Fixed borders · colour = adoption speed",
