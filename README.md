@@ -12,7 +12,7 @@ An interactive data visualization exploring 30 years of internet adoption (1990�
 
 - **Timelapse with history** — press play to watch the real share of people online, country by country, year by year from 1990 to 2024, while the events that shaped the internet (Mosaic, Google, the iPhone, the Arab Spring, Jio, COVID…) appear in sync. Every year has at least one milestone; country-specific ones pulse on the map.
 - **Scrub & deep-link any year** — drag the timeline (event ticks are clickable) or link straight to a year with `?y=2007`.
-- **Four data layers** — adoption speed (10→50 years), share online, mobile subscriptions and fixed broadband per 100 people. Each layer works both as a static map (latest values) and inside the timelapse.
+- **Seven data layers** — adoption speed (10→50 years), share online, mobile subscriptions and fixed broadband per 100 people, price of 1GB mobile data (USD), median mobile download speed, and internet-use gender parity (women online per man online). Each layer works both as a static map (latest values) and inside the timelapse, greying out before its data begins.
 - **Country drill-down** — click any country for a panel with its 1990–2024 curves (online %, mobile, broadband), its 10%/50% crossing points, its national milestones, a hover readout, and a cursor that follows the timelapse year.
 - **Submarine cable overlay** — toggle the physical network that carries all this traffic: 263 submarine cables appear on the globe/map as their ready-for-service year is reached during the timelapse, glowing on the year they're laid before settling into the background mesh. Also viewable statically. Hover a cable for its name, RFS year and owners.
 - **Flat map / 3D globe toggle** — view country data on a Natural Earth projection or a draggable, rotatable orthographic globe.
@@ -29,10 +29,12 @@ css/style.css         styles
 js/app.js             map, timelapse and UI logic (plain D3, no build step)
 data/adoption.js       per-country annual series + threshold metrics (generated)
 data/metrics.js        mobile & fixed-broadband subs per 100 people (generated)
+data/extras.js         1GB price, median Mbps, gender parity (generated)
 data/cables.js         submarine cable routes + ready-for-service years (generated)
 data/geo.js            topojson-id → ISO lookups, small-territory dots
 data/events.js         curated internet-history milestones
 scripts/build_data.py  regenerates adoption.js + metrics.js (OWID + World Bank)
+scripts/build_extras.py regenerates extras.js (Cable.co.uk + Ookla + World Bank)
 scripts/build_cables.py regenerates cables.js (TeleGeography mirror)
 ```
 
@@ -40,6 +42,7 @@ scripts/build_cables.py regenerates cables.js (TeleGeography mirror)
 
 - Internet penetration (annual, per country) is sourced from [Our World in Data](https://ourworldindata.org/grapher/share-of-individuals-using-the-internet) / ITU (2025 release).
 - Mobile and fixed-broadband subscriptions per 100 people come from the [World Bank API](https://data.worldbank.org/indicator/IT.CEL.SETS.P2) (indicators `IT.CEL.SETS.P2`, `IT.NET.BBND.P2`).
+- The price of 1GB of mobile data (USD, 2019–2023) comes from the [Cable.co.uk worldwide mobile data pricing study](https://www.cable.co.uk/mobiles/worldwide-data-pricing/); median mobile download speeds are a current snapshot of the [Ookla Speedtest Global Index](https://www.speedtest.net/global-index); the gender parity ratio is women online / men online from World Bank indicators `IT.NET.USER.FE.ZS` / `IT.NET.USER.MA.ZS`. Refresh with `python3 scripts/build_extras.py`.
 - Refresh everything with `python3 scripts/build_data.py` — no dependencies beyond the Python standard library. Where a country's series ends early, the last reported value is held (shown as "latest available").
 - Submarine cable routes and ready-for-service years come from a public mirror of [TeleGeography's submarine cable map](https://github.com/delusan/www.submarinecablemap.com). It's a fixed historical snapshot (RFS years run 1989–2015, not to the present), regenerated with `python3 scripts/build_cables.py`.
 - Historical events are hand-curated in `data/events.js`.

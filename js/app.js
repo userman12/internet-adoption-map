@@ -2,12 +2,13 @@
    Data files (loaded before this script):
      data/adoption.js -> window.ADOPTION  (per-country annual series + threshold metrics)
      data/metrics.js  -> window.METRICS   (mobile & fixed-broadband subs per 100, annual)
+     data/extras.js   -> window.EXTRAS    (1GB price, median Mbps, gender parity)
      data/geo.js      -> window.GEO       (topojson id -> iso, dot coords, id -> name)
      data/events.js   -> window.EVENTS    (curated internet-history milestones)         */
 
 const DATA={}; ADOPTION.countries.forEach(c=>DATA[c.iso]=c);
 const WORLD=ADOPTION.world||null;
-const MET=window.METRICS||{mobile:{},bband:{}};
+const MET=Object.assign({mobile:{},bband:{}},window.METRICS||{},window.EXTRAS||{});
 const N2I=GEO.num2iso, DOTS=GEO.dots, NUM2NAME=GEO.num2name;
 const FAST=["KOR","CYM","CAN","SVK","KAZ","NOR","AUS","CHE","NZL","SWE"];
 const SLOW=["STP","EGY","PER","NIC","TJK","BOL","BLZ","THA","JAM","MEX"];
@@ -19,12 +20,28 @@ const scale=d3.scaleLinear().domain([2,8,17]).range(["#17b8a6","#e9e0c9","#e8582
 const PCT_STOPS=["#155449","#146b58","#158468","#16a084","#17b8a6","#6fdec4","#c8f7e6"];
 function rampFor(max){return d3.scaleLinear()
   .domain(PCT_STOPS.map((_,i)=>i*max/(PCT_STOPS.length-1))).range(PCT_STOPS).clamp(true);}
-const SCALES={net:rampFor(100),mobile:rampFor(150),bband:rampFor(50)};
-// magnitude layers: label + legend end labels + tooltip row
+// log-spaced ramp for long-tailed metrics (price, Mbps)
+function rampLog(lo,hi,stops){const n=stops.length,
+  d=Array.from({length:n},(_,i)=>lo*Math.pow(hi/lo,i/(n-1)));
+  return d3.scaleLinear().domain(d).range(stops).clamp(true);}
+const PCT_REV=[...PCT_STOPS].reverse();
+const SCALES={net:rampFor(100),mobile:rampFor(150),bband:rampFor(50),
+  // price: bright = cheap (good), fading to dark as 1GB gets expensive
+  price:rampLog(0.1,30,PCT_REV),
+  mbps:rampLog(10,800,PCT_STOPS),
+  // gender parity: diverging around 1.0 = parity (same poles as the speed scale)
+  gender:d3.scaleLinear().domain([0.5,1,1.1]).range(["#e8582c","#e9e0c9","#17b8a6"]).clamp(true)};
+// magnitude layers: label + legend end labels + tooltip row + value format
+const fmt1=v=>Math.round(v*10)/10;
 const LAYERS={
-  net:{lt:"Share of people online",lo:"0%",hi:"100%",row:"Online",unit:"%"},
-  mobile:{lt:"Mobile subscriptions / 100 people",lo:"0",hi:"150+",row:"Mobile subs",unit:" /100"},
-  bband:{lt:"Fixed broadband / 100 people",lo:"0",hi:"50+",row:"Fixed broadband",unit:" /100"}
+  net:{lt:"Share of people online",lo:"0%",hi:"100%",row:"Online",fmt:v=>v+"%"},
+  mobile:{lt:"Mobile subscriptions / 100 people",lo:"0",hi:"150+",row:"Mobile subs",fmt:v=>v+" /100"},
+  bband:{lt:"Fixed broadband / 100 people",lo:"0",hi:"50+",row:"Fixed broadband",fmt:v=>v+" /100"},
+  price:{lt:"Price of 1GB mobile data (USD)",lo:"$0.10 · cheap",hi:"$30+",row:"1GB costs",fmt:v=>"$"+v,
+    grad:PCT_REV},
+  mbps:{lt:"Median mobile download speed",lo:"10 Mbps",hi:"800",row:"Download",fmt:v=>fmt1(v)+" Mbps"},
+  gender:{lt:"Women online for every man online",lo:"0.5 · men ahead",hi:"women ahead",row:"F/M parity",fmt:v=>v,
+    grad:["#e8582c","#e9e0c9 83%","#17b8a6"]} // cream sits at parity (1.0) in the 0.5–1.1 domain
 };
 // country-panel line colours (validated categorical trio on the panel surface)
 const LC={net:"#109184",mobile:"#b8842c",bband:"#6f83e6"};
@@ -149,6 +166,8 @@ function updateLegend(){
   if(mag){const L=LAYERS[mag];
     d3.select("#l2t").text(L.lt);
     d3.select("#l2a").text(L.lo);d3.select("#l2b").text(L.hi);
+    d3.select("#legend2 .bar")
+      .style("background",L.grad?`linear-gradient(90deg,${L.grad.join(",")})`:null);
     d3.select("#l2n").text(tl?"No data yet that year":"No data");}
 }
 function buildRank(){
@@ -182,9 +201,9 @@ function tipHtml(iso){const d=DATA[iso];if(!d)return null;
   r+=`<div class="g"><span>Passed 10%</span><b>${d.y10??"—"}</b></div>`;
   r+=`<div class="g"><span>Passed ${tgt}%</span><b>${yc??"never"}</b></div>`;
   r+=`<div class="g"><span>Online${d.ly?" ("+d.ly+")":""}</span><b>${d.latest!=null?d.latest+"%":"—"}</b></div>`;
-  if(layer==="mobile"||layer==="bband"){
+  if(layer!=="speed"&&layer!=="net"){
     const yr=year!=null?year:END,v=metValueAt(layer,iso,yr);
-    r+=`<div class="g"><span>${LAYERS[layer].row}${year!=null?" in "+year:""}</span><b>${v!=null?v+" /100":"—"}</b></div>`;}
+    r+=`<div class="g"><span>${LAYERS[layer].row}${year!=null?" in "+year:""}</span><b>${v!=null?LAYERS[layer].fmt(v):"—"}</b></div>`;}
   let big;
   if(g!=null)big=`<div class="big">Went 10%→${tgt}% in <b>${g}</b> year${g==1?"":"s"}${d.lowconf?" *":""}</div>`;
   else if(d.y10!=null)big=`<div class="big" style="color:var(--slow)">Crossed 10% in ${d.y10} — still under ${tgt}%</div>`;
@@ -530,9 +549,13 @@ d3.selectAll("#layerseg button").on("click",function(){
   d3.select("#threshgrp").style("display",speedOn?null:"none");
   d3.select("#hirow").style("display",speedOn?null:"none");
   if(!speedOn&&highlight){highlight=null;d3.selectAll(".btn[data-h]").classed("on",false);}
-  d3.select(".foot").html(speedOn
-    ?"Source: Our World in Data / ITU (2025)<br/>Fixed borders · colour = adoption speed"
-    :"Source: OWID/ITU · World Bank (2025)<br/>Fixed borders · latest value where series ends");
+  const FOOT={
+    speed:"Source: Our World in Data / ITU (2025)<br/>Fixed borders · colour = adoption speed",
+    price:"Source: Cable.co.uk mobile data pricing (2023)<br/>Fixed borders · brighter = cheaper 1GB",
+    mbps:"Source: Ookla Speedtest Global Index (2026)<br/>Fixed borders · median mobile download",
+    gender:"Source: World Bank / ITU (2025)<br/>Fixed borders · women online per man online"};
+  d3.select(".foot").html(FOOT[layer]||
+    "Source: OWID/ITU · World Bank (2025)<br/>Fixed borders · latest value where series ends");
   buildLabels();buildRank();redraw();paint(true);updateTlPos();
 });
 d3.selectAll("#thresh button").on("click",function(){

@@ -41,6 +41,27 @@ Tutte le fonti del progetto Internet Adoption Map sono pubbliche, scaricabili e 
 
 ---
 
+## 2-bis. Dataset extra (fase 1a): prezzo, velocità, gender gap
+
+**Script:** `python3 scripts/build_extras.py` → genera `data/extras.js`
+
+### Prezzo di 1GB di dati mobili
+- **Fonte:** [Cable.co.uk worldwide mobile data pricing](https://www.cable.co.uk/mobiles/worldwide-data-pricing/) (studio 2023, XLSX con storico)
+- **Copertura:** 214 paesi, anni 2019–2023 (USD, prezzo medio 1GB)
+- **Nota:** codici ISO2 nel file, convertiti in ISO3 tramite l'elenco paesi World Bank
+
+### Velocità mediana download mobile
+- **Fonte:** [Ookla Speedtest Global Index](https://www.speedtest.net/global-index) (tabelle HTML della pagina)
+- **Copertura:** ~96 paesi, snapshot corrente (Mbps mediani mobile) — nessuno storico
+- **Nota:** i nomi paese (slug) sono mappati a ISO3 con alias curati nello script
+
+### Gender gap online (parità F/M)
+- **Fonte:** World Bank API, indicatori `IT.NET.USER.FE.ZS` (donne online %) e `IT.NET.USER.MA.ZS` (uomini online %)
+- **Metrica derivata:** rapporto donne/uomini online (1.0 = parità)
+- **Copertura:** 165 paesi, serie annuali dove entrambi gli indicatori esistono
+
+---
+
 ## 3. Cavi sottomarini
 
 **Fonte:** [TeleGeography Submarine Cable Map](https://github.com/delusan/www.submarinecablemap.com) (mirror pubblico)
