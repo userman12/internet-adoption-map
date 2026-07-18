@@ -308,7 +308,21 @@ function setYear(y,anim){
   d3.select("#yworld").text(wv!=null?` · world ${Math.round(wv)}% online`:"");
   updateEvents();updateCursor();updateCables();paint(anim);
 }
+function fitFilters(){
+  // flex-wrap leaves the panel at max-width even when its wrapped lines end
+  // short of the edge — shrink it to the widest actual line
+  const fl=document.getElementById("filters");
+  fl.style.width="";
+  const pr=fl.getBoundingClientRect();
+  let right=0;
+  fl.querySelectorAll(".crow > *").forEach(el=>{
+    if(!el.offsetWidth)return;
+    right=Math.max(right,el.getBoundingClientRect().right-pr.left);
+  });
+  if(right>0)fl.style.width=Math.ceil(right+parseFloat(getComputedStyle(fl).paddingRight)+1)+"px";
+}
 function updateTlPos(){
+  fitFilters();
   const f=document.getElementById("filters").getBoundingClientRect();
   const tl=document.getElementById("tlrow");
   tl.style.left=f.left+"px";
@@ -469,7 +483,8 @@ Promise.all([
   gDot.selectAll("circle").data(dk).join("circle").attr("class","dot").attr("r",4.2)
     .on("mousemove",(e,d)=>{enter(d);move(e);}).on("mouseleave",leave)
     .on("click",(e,d)=>openPanel(d));
-  loaded=true;bindGeo();bindCables();gCab.style("display","none");fit();
+  loaded=true;bindGeo();bindCables();gCab.style("display","none");fit();updateTlPos();
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(updateTlPos);
   // globe is the default view: kick off the spin and show the drag hint
   if(view==="globe"){setSpin(spinOn);
     d3.select("#hint").classed("show",true);setTimeout(()=>d3.select("#hint").classed("show",false),3200);}
