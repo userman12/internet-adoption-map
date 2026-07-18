@@ -72,6 +72,19 @@ Tutte le fonti del progetto Internet Adoption Map sono pubbliche, scaricabili e 
 - **Copertura:** 72 paesi valutati; il resto risulta "Not assessed"
 - **Nota:** solo edizione corrente, nessuno storico (Freedom House non pubblica un bulk-download)
 
+### Internet exchange points & data center
+- **Fonte:** [PeeringDB](https://www.peeringdb.com/) API pubblica, endpoint `ix` (internet exchange) e `fac` (data center facilities)
+- **Metrica primaria:** conteggio IXP attivi per paese (layer mappa)
+- **Metrica secondaria:** conteggio data center PeeringDB per paese (riga extra nel tooltip, non un layer a sé)
+- **Copertura:** 1.311 IXP in 164 paesi mappati, 5.857 facility in 162 paesi
+- **Nota sullo zero:** l'assenza dalla mappa significa "nessun IXP censito su PeeringDB", non necessariamente zero in assoluto — PeeringDB è il database più completo ma è a iscrizione volontaria, quindi la legenda dice "No listed exchange", non "0"
+
+### IPv6 adoption
+- **Fonte:** [Google — statistiche IPv6 per paese](https://www.google.com/intl/en/ipv6/statistics.html), file dati statico `worldmap.js` aggiornato quotidianamente
+- **Metrica:** % di traffico IPv6 nativo verso Google, per paese
+- **Copertura:** 216 paesi/territori
+- **Nota:** solo snapshot corrente, nessuno storico (il file non contiene serie temporali)
+
 ---
 
 ## 3. Cavi sottomarini

@@ -34,7 +34,9 @@ const SCALES={net:rampFor(100),mobile:rampFor(150),bband:rampFor(50),
   gender:d3.scaleLinear().domain([0.5,1,1.1]).range(["#e8582c","#e9e0c9","#17b8a6"]).clamp(true),
   // shutdowns: warm alarm ramp, brighter = more incidents (log 1..900, India ~857)
   shut:rampLog(1,900,SHUT_STOPS),
-  fotn:rampFor(100)};
+  fotn:rampFor(100),
+  ixp:rampLog(1,220,PCT_STOPS),
+  ipv6:rampFor(100)};
 // magnitude layers: label + legend end labels + tooltip row + value format
 const fmt1=v=>Math.round(v*10)/10;
 const LAYERS={
@@ -49,7 +51,10 @@ const LAYERS={
   shut:{lt:"Internet shutdowns since 2016",lo:"1",hi:"850+",row:"Shutdowns since 2016",
     fmt:v=>Math.round(v),zero:"0",none:"No recorded shutdowns",grad:SHUT_STOPS},
   fotn:{lt:"Freedom on the Net score",lo:"0 · not free",hi:"100 · free",row:"Net freedom",
-    fmt:v=>Math.round(v)+" /100",none:"Not assessed"}
+    fmt:v=>Math.round(v)+" /100",none:"Not assessed"},
+  ixp:{lt:"Internet exchange points",lo:"1",hi:"200+",row:"Internet exchanges",
+    fmt:v=>Math.round(v),none:"No listed exchange"},
+  ipv6:{lt:"Native IPv6 adoption",lo:"0%",hi:"100%",row:"IPv6 traffic",fmt:v=>fmt1(v)+"%"}
 };
 // country-panel line colours (validated categorical trio on the panel surface)
 const LC={net:"#109184",mobile:"#b8842c",bband:"#6f83e6"};
@@ -211,7 +216,9 @@ function tipHtml(iso){const d=DATA[iso];if(!d)return null;
   r+=`<div class="g"><span>Online${d.ly?" ("+d.ly+")":""}</span><b>${d.latest!=null?d.latest+"%":"—"}</b></div>`;
   if(layer!=="speed"&&layer!=="net"){
     const yr=year!=null?year:END,v=metValueAt(layer,iso,yr);
-    r+=`<div class="g"><span>${LAYERS[layer].row}${year!=null?" in "+year:""}</span><b>${v!=null?LAYERS[layer].fmt(v):(LAYERS[layer].zero??"—")}</b></div>`;}
+    r+=`<div class="g"><span>${LAYERS[layer].row}${year!=null?" in "+year:""}</span><b>${v!=null?LAYERS[layer].fmt(v):(LAYERS[layer].zero??"—")}</b></div>`;
+    if(layer==="ixp"){const dc=metValueAt("dc",iso,yr);
+      r+=`<div class="g"><span>Data center facilities</span><b>${dc!=null?Math.round(dc):"0"}</b></div>`;}}
   let big;
   if(g!=null)big=`<div class="big">Went 10%→${tgt}% in <b>${g}</b> year${g==1?"":"s"}${d.lowconf?" *":""}</div>`;
   else if(d.y10!=null)big=`<div class="big" style="color:var(--slow)">Crossed 10% in ${d.y10} — still under ${tgt}%</div>`;
@@ -579,7 +586,9 @@ d3.selectAll("#layerseg button").on("click",function(){
     mbps:"Source: Ookla Speedtest Global Index (2026)<br/>Fixed borders · median mobile download",
     gender:"Source: World Bank / ITU (2025)<br/>Fixed borders · women online per man online",
     shut:"Source: Access Now #KeepItOn STOP (2016–2024)<br/>Fixed borders · cumulative recorded shutdowns",
-    fotn:"Source: Freedom House, Freedom on the Net (2025)<br/>Fixed borders · 72 countries assessed"};
+    fotn:"Source: Freedom House, Freedom on the Net (2025)<br/>Fixed borders · 72 countries assessed",
+    ixp:"Source: PeeringDB (2026)<br/>Fixed borders · active internet exchanges per country",
+    ipv6:"Source: Google (2026)<br/>Fixed borders · native IPv6 traffic, current snapshot"};
   d3.select(".foot").html(FOOT[layer]||
     "Source: OWID/ITU · World Bank (2025)<br/>Fixed borders · latest value where series ends");
   buildLabels();buildRank();redraw();paint(true);updateTlPos();
