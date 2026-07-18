@@ -25,12 +25,16 @@ function rampLog(lo,hi,stops){const n=stops.length,
   d=Array.from({length:n},(_,i)=>lo*Math.pow(hi/lo,i/(n-1)));
   return d3.scaleLinear().domain(d).range(stops).clamp(true);}
 const PCT_REV=[...PCT_STOPS].reverse();
+const SHUT_STOPS=["#47200f","#6b2d10","#903c12","#b54d18","#d96322","#f28749","#ffb98c"];
 const SCALES={net:rampFor(100),mobile:rampFor(150),bband:rampFor(50),
   // price: bright = cheap (good), fading to dark as 1GB gets expensive
   price:rampLog(0.1,30,PCT_REV),
   mbps:rampLog(10,800,PCT_STOPS),
   // gender parity: diverging around 1.0 = parity (same poles as the speed scale)
-  gender:d3.scaleLinear().domain([0.5,1,1.1]).range(["#e8582c","#e9e0c9","#17b8a6"]).clamp(true)};
+  gender:d3.scaleLinear().domain([0.5,1,1.1]).range(["#e8582c","#e9e0c9","#17b8a6"]).clamp(true),
+  // shutdowns: warm alarm ramp, brighter = more incidents (log 1..900, India ~857)
+  shut:rampLog(1,900,SHUT_STOPS),
+  fotn:rampFor(100)};
 // magnitude layers: label + legend end labels + tooltip row + value format
 const fmt1=v=>Math.round(v*10)/10;
 const LAYERS={
@@ -41,7 +45,11 @@ const LAYERS={
     grad:PCT_REV},
   mbps:{lt:"Median mobile download speed",lo:"10 Mbps · slow",hi:"800 Mbps · fast",row:"Download",fmt:v=>fmt1(v)+" Mbps"},
   gender:{lt:"Women online per man online",lo:"0.5 · men ahead",hi:"women ahead",row:"F/M parity",fmt:v=>v,
-    grad:["#e8582c","#e9e0c9 83%","#17b8a6"]} // cream sits at parity (1.0) in the 0.5–1.1 domain
+    grad:["#e8582c","#e9e0c9 83%","#17b8a6"]}, // cream sits at parity (1.0) in the 0.5–1.1 domain
+  shut:{lt:"Internet shutdowns since 2016",lo:"1",hi:"850+",row:"Shutdowns since 2016",
+    fmt:v=>Math.round(v),zero:"0",none:"No recorded shutdowns",grad:SHUT_STOPS},
+  fotn:{lt:"Freedom on the Net score",lo:"0 · not free",hi:"100 · free",row:"Net freedom",
+    fmt:v=>Math.round(v)+" /100",none:"Not assessed"}
 };
 // country-panel line colours (validated categorical trio on the panel surface)
 const LC={net:"#109184",mobile:"#b8842c",bband:"#6f83e6"};
@@ -168,7 +176,7 @@ function updateLegend(){
     d3.select("#l2a").text(L.lo);d3.select("#l2b").text(L.hi);
     d3.select("#legend2 .bar")
       .style("background",L.grad?`linear-gradient(90deg,${L.grad.join(",")})`:null);
-    d3.select("#l2n").text(tl?"No data yet that year":"No data");}
+    d3.select("#l2n").text(L.none||(tl?"No data yet that year":"No data"));}
 }
 function buildRank(){
   const rank=d3.select("#rank");
@@ -203,7 +211,7 @@ function tipHtml(iso){const d=DATA[iso];if(!d)return null;
   r+=`<div class="g"><span>Online${d.ly?" ("+d.ly+")":""}</span><b>${d.latest!=null?d.latest+"%":"—"}</b></div>`;
   if(layer!=="speed"&&layer!=="net"){
     const yr=year!=null?year:END,v=metValueAt(layer,iso,yr);
-    r+=`<div class="g"><span>${LAYERS[layer].row}${year!=null?" in "+year:""}</span><b>${v!=null?LAYERS[layer].fmt(v):"—"}</b></div>`;}
+    r+=`<div class="g"><span>${LAYERS[layer].row}${year!=null?" in "+year:""}</span><b>${v!=null?LAYERS[layer].fmt(v):(LAYERS[layer].zero??"—")}</b></div>`;}
   let big;
   if(g!=null)big=`<div class="big">Went 10%→${tgt}% in <b>${g}</b> year${g==1?"":"s"}${d.lowconf?" *":""}</div>`;
   else if(d.y10!=null)big=`<div class="big" style="color:var(--slow)">Crossed 10% in ${d.y10} — still under ${tgt}%</div>`;
@@ -569,7 +577,9 @@ d3.selectAll("#layerseg button").on("click",function(){
     speed:"Source: Our World in Data / ITU (2025)<br/>Fixed borders · colour = adoption speed",
     price:"Source: Cable.co.uk mobile data pricing (2023)<br/>Fixed borders · brighter = cheaper 1GB",
     mbps:"Source: Ookla Speedtest Global Index (2026)<br/>Fixed borders · median mobile download",
-    gender:"Source: World Bank / ITU (2025)<br/>Fixed borders · women online per man online"};
+    gender:"Source: World Bank / ITU (2025)<br/>Fixed borders · women online per man online",
+    shut:"Source: Access Now #KeepItOn STOP (2016–2024)<br/>Fixed borders · cumulative recorded shutdowns",
+    fotn:"Source: Freedom House, Freedom on the Net (2025)<br/>Fixed borders · 72 countries assessed"};
   d3.select(".foot").html(FOOT[layer]||
     "Source: OWID/ITU · World Bank (2025)<br/>Fixed borders · latest value where series ends");
   buildLabels();buildRank();redraw();paint(true);updateTlPos();

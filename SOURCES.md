@@ -60,16 +60,28 @@ Tutte le fonti del progetto Internet Adoption Map sono pubbliche, scaricabili e 
 - **Metrica derivata:** rapporto donne/uomini online (1.0 = parità)
 - **Copertura:** 165 paesi, serie annuali dove entrambi gli indicatori esistono
 
+### Internet shutdowns
+- **Fonte:** [Access Now #KeepItOn — STOP dataset](https://www.accessnow.org/campaign/keepiton/) (Google Sheet pubblico, foglio "Combined 2016-2025")
+- **Metrica:** conteggio cumulativo di shutdown registrati per paese dal 2016 (le righe multi-paese vengono attribuite a ogni paese coinvolto)
+- **Copertura:** 92 paesi; grigio in mappa = zero shutdown registrati (non "dato mancante")
+- **Nota:** gli incidenti dell'anno in corso entrano al refresh successivo (la serie si ferma a YEAR_MAX)
+
+### Freedom on the Net
+- **Fonte:** [Freedom House](https://freedomhouse.org/countries/freedom-net/scores) (tabella scores dell'edizione corrente)
+- **Metrica:** indice 0–100 (100 = massima libertà della rete)
+- **Copertura:** 72 paesi valutati; il resto risulta "Not assessed"
+- **Nota:** solo edizione corrente, nessuno storico (Freedom House non pubblica un bulk-download)
+
 ---
 
 ## 3. Cavi sottomarini
 
-**Fonte:** [TeleGeography Submarine Cable Map](https://github.com/delusan/www.submarinecablemap.com) (mirror pubblico)
+**Fonte:** [TeleGeography Submarine Cable Map](https://www.submarinecablemap.com/) — API v3 live
 
 **Dati:**
-- 263 cavi sottomarini
+- 604 cavi sottomarini in servizio (i ~90 progetti pianificati sono esclusi)
 - Per ogni cavo: id, nome, anno di Ready-For-Service (RFS), proprietari, geometria (rotte come MultiLineString)
-- File: `all.json` (metadati) e `cables-geo.json` (geometrie GeoJSON)
+- Endpoint: `all.json` (indice), `{id}.json` (dettagli per cavo, scaricati in parallelo), `cable-geo.json` (geometrie GeoJSON)
 
 **Aggiornamento:** Eseguire `python3 scripts/build_cables.py`
 - Scarica da TeleGeography mirror
@@ -77,7 +89,7 @@ Tutte le fonti del progetto Internet Adoption Map sono pubbliche, scaricabili e 
 - Calcola le rotte per cavo
 - Genera `data/cables.js` (88 KB, file JS puro)
 
-**Nota importante:** Questo è uno snapshot storico congelato. Gli anni RFS vanno dal 1989 al 2015 e non vengono aggiornati in tempo reale. I cavi moderni (2016–2024) non sono presenti — se necessario aggiornare, il mirror upstream è la fonte.
+**Nota:** Fonte live — gli anni RFS vanno dal 1989 al 2026. Rigenerando con lo script si ottiene sempre lo stato attuale della rete.
 
 **Visualizzazione:** I cavi appaiono sulla mappa quando la timelapse raggiunge il loro anno RFS, con uno stato visivo che cambia da "laid" (posato) a "fresh" (nuovo, con glow) e infine "unlaid" (futuro).
 

@@ -120,6 +120,77 @@ def norm(name):
     return re.sub(r"[^a-z]+", "", name.lower())
 
 
+# Dataset country names that don't resolve via normalised World Bank names
+# (World Bank uses e.g. "Russian Federation", "Iran, Islamic Rep.").
+NAME_ALIASES = {
+    "russia": "RUS", "iran": "IRN", "venezuela": "VEN", "egypt": "EGY",
+    "syria": "SYR", "vietnam": "VNM", "turkey": "TUR", "kyrgyzstan": "KGZ",
+    "slovakia": "SVK", "southkorea": "KOR", "northkorea": "PRK",
+    "yemen": "YEM", "thegambia": "GMB", "gambia": "GMB", "bahamas": "BHS",
+    "laos": "LAO", "palestine": "PSE", "taiwan": "TWN", "hongkong": "HKG",
+    "macau": "MAC", "capeverde": "CPV", "eswatini": "SWZ", "brunei": "BRN",
+    "democraticrepublicofthecongo": "COD", "drcongo": "COD",
+    "republicofthecongo": "COG", "congobrazzaville": "COG",
+    "congokinshasa": "COD", "ivorycoast": "CIV", "cotedivoire": "CIV",
+    "czechrepublic": "CZE", "czechia": "CZE", "myanmarburma": "MMR",
+    "saintvincentandthegrenadines": "VCT", "saintkittsandnevis": "KNA",
+    "saintlucia": "LCA", "micronesia": "FSM", "stlucia": "LCA",
+    "unitedstatesofamerica": "USA", "unitedkingdomofgreatbritain": "GBR",
+    "bolivia": "BOL", "tanzania": "TZA", "moldova": "MDA",
+    # UN-style long forms used by the STOP dataset
+    "iranislamicrepublicof": "IRN", "venezuelabolivarianrepublicof": "VEN",
+    "tanzaniaunitedrepublicof": "TZA", "palestinestateof": "PSE",
+    "congodemocraticrepublicofthe": "COD", "congo": "COG",
+    "ctedivoire": "CIV",  # "Côte d'Ivoire" after accent stripping
+    "somaliland": "SOM",  # not separately mapped; counted under Somalia
+}
+
+
+def to_iso3(name, name_to3):
+    n = norm(name)
+    return NAME_ALIASES.get(n) or name_to3.get(n)
+
+
+def xlsx_open(data):
+    """(zipfile, shared strings, {sheet name: worksheet path})."""
+    z = zipfile.ZipFile(BytesIO(data))
+    ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+          "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships"}
+    t_tag = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}t"
+    strings = [
+        "".join(t.text or "" for t in si.iter(t_tag))
+        for si in ET.fromstring(z.read("xl/sharedStrings.xml")).findall("m:si", ns)
+    ]
+    rels = {r.get("Id"): r.get("Target")
+            for r in ET.fromstring(z.read("xl/_rels/workbook.xml.rels"))}
+    sheets = {}
+    for s in ET.fromstring(z.read("xl/workbook.xml")).findall(".//m:sheet", ns):
+        target = rels[s.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id")]
+        sheets[s.get("name")] = "xl/" + target.removeprefix("xl/").lstrip("/")
+    return z, strings, sheets
+
+
+def xlsx_dict_rows(z, strings, path):
+    """Rows as {header: value} dicts (header from the first row)."""
+    ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    rows = ET.fromstring(z.read(path)).findall(".//m:row", ns)
+
+    def cells(row):
+        out = {}
+        for c in row.findall("m:c", ns):
+            col = "".join(ch for ch in c.get("r", "") if ch.isalpha())
+            v = c.find("m:v", ns)
+            val = v.text if v is not None else ""
+            if c.get("t") == "s" and val:
+                val = strings[int(val)]
+            out[col] = val
+        return out
+
+    header = cells(rows[0])
+    return [{header[col]: val for col, val in cells(r).items() if col in header}
+            for r in rows[1:]]
+
+
 # ── price of 1GB (Cable.co.uk XLSX, historical sheet) ─────────────
 
 
@@ -195,6 +266,81 @@ def build_speed(name_to3):
     return series_map(by_iso, 1)
 
 
+# ── internet shutdowns (Access Now #KeepItOn STOP dataset) ────────
+
+STOP_URL = ("https://docs.google.com/spreadsheets/d/"
+            "1DvPAuHNLp5BXGb0nnZDGNoiIwEeu2ogdXEIDvT4Hyfk/export?format=xlsx")
+EXCEL_EPOCH_ORD = 693594  # datetime(1899,12,30).toordinal()
+
+
+def build_shutdowns(name_to3):
+    print("downloading Access Now STOP dataset ...")
+    z, strings, sheets = xlsx_open(fetch(STOP_URL, binary=True))
+    combined = next(p for n, p in sheets.items() if n.startswith("Combined"))
+    counts, missed = {}, set()
+    for row in xlsx_dict_rows(z, strings, combined):
+        names = (row.get("country") or "").strip()
+        raw = (row.get("start_date") or "").strip()
+        if not names or not raw:
+            continue
+        try:  # excel serial date
+            from datetime import date
+            year = date.fromordinal(EXCEL_EPOCH_ORD + int(float(raw))).year
+        except (ValueError, OverflowError):
+            m = re.search(r"(19|20)\d\d", raw)
+            if not m:
+                continue
+            year = int(m.group(0))
+        if year > YEAR_MAX:
+            continue  # series ends at YEAR_MAX; current-year data lands next refresh
+        for name in names.split(";"):  # one incident can span several countries
+            iso = to_iso3(name.strip(), name_to3)
+            if not iso:
+                missed.add(name.strip())
+                continue
+            counts.setdefault(iso, {}).setdefault(year, 0)
+            counts[iso][year] += 1
+    if missed:
+        print(f"  unmatched countries ({len(missed)}): {', '.join(sorted(missed))}")
+    by_iso = {}
+    for iso, per_year in counts.items():
+        first = min(per_year)
+        total, points = 0, []
+        for y in range(first, YEAR_MAX + 1):  # cumulative count of shutdowns
+            total += per_year.get(y, 0)
+            points.append((y, total))
+        by_iso[iso] = points
+    return series_map(by_iso, 0)
+
+
+# ── Freedom on the Net score (Freedom House, current edition) ─────
+
+FOTN_URL = "https://freedomhouse.org/countries/freedom-net/scores"
+
+
+def build_fotn(name_to3):
+    print("downloading Freedom House FOTN scores ...")
+    html = fetch(FOTN_URL)
+    by_iso, missed = {}, set()
+    for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", html, re.S):
+        cells = [re.sub(r"<[^>]+>|\s+", " ", c).strip()
+                 for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", tr, re.S)]
+        if len(cells) < 5 or cells[0] == "Country or Territory":
+            continue
+        m = re.match(r"(\d+)\s*/\s*100", cells[4])
+        if not m:
+            continue  # "Not covered"
+        name = cells[0].rstrip("*").strip()
+        iso = to_iso3(name, name_to3)
+        if not iso:
+            missed.add(name)
+            continue
+        by_iso[iso] = [(YEAR_MAX, int(m.group(1)))]
+    if missed:
+        print(f"  unmatched countries ({len(missed)}): {', '.join(sorted(missed))}")
+    return series_map(by_iso, 0)
+
+
 # ── internet-use gender parity (World Bank F/M ratio) ─────────────
 
 
@@ -228,12 +374,16 @@ def main():
         "price": build_price(iso2to3),
         "mbps": build_speed(name_to3),
         "gender": build_gender(),
+        "shut": build_shutdowns(name_to3),
+        "fotn": build_fotn(name_to3),
     }
     js = ("// Generated by scripts/build_extras.py — do not edit by hand.\n"
           "// price:  USD per 1GB mobile data (Cable.co.uk study, 2019-2023)\n"
           "// mbps:   median mobile download speed, Speedtest Global Index snapshot\n"
           "// gender: internet-use gender parity, women online / men online\n"
           "//         (World Bank IT.NET.USER.FE.ZS / IT.NET.USER.MA.ZS)\n"
+          "// shut:   cumulative internet shutdowns since 2016 (Access Now #KeepItOn)\n"
+          "// fotn:   Freedom on the Net score 0-100 (Freedom House, current edition)\n"
           "window.EXTRAS=" + json.dumps(extras, separators=(",", ":")) + ";\n")
     target = REPO / "data" / "extras.js"
     target.write_text(js)
