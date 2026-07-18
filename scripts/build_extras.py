@@ -176,8 +176,9 @@ def build_price(iso2to3):
 def build_speed(name_to3):
     print("downloading Speedtest Global Index ...")
     html = fetch(SPEED_URL)
-    # mobile results come in the #column-mobileMedian section
-    mobile = html.split("column-fixedMedian")[0]
+    # the page carries both MEAN and MEDIAN mobile rankings; we want the
+    # median one, which lives between these two section markers
+    mobile = html.split("column-mobileMedian")[1].split("column-fixedMedian")[0]
     pairs = re.findall(
         r'href="/global-index/([a-z-]+)#mobile"[^>]*>.*?'
         r'<td class="speed">([\d.]+)</td>',

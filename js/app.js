@@ -39,7 +39,7 @@ const LAYERS={
   bband:{lt:"Fixed broadband / 100 people",lo:"0",hi:"50+",row:"Fixed broadband",fmt:v=>v+" /100"},
   price:{lt:"Price of 1GB mobile data (USD)",lo:"$0.10 · cheap",hi:"$30+",row:"1GB costs",fmt:v=>"$"+v,
     grad:PCT_REV},
-  mbps:{lt:"Median mobile download speed",lo:"10 Mbps",hi:"800",row:"Download",fmt:v=>fmt1(v)+" Mbps"},
+  mbps:{lt:"Median mobile download speed",lo:"10 Mbps · slow",hi:"800 · fast",row:"Download",fmt:v=>fmt1(v)+" Mbps"},
   gender:{lt:"Women online for every man online",lo:"0.5 · men ahead",hi:"women ahead",row:"F/M parity",fmt:v=>v,
     grad:["#e8582c","#e9e0c9 83%","#17b8a6"]} // cream sits at parity (1.0) in the 0.5–1.1 domain
 };
