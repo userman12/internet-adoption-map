@@ -64,14 +64,13 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:30px;line-height
 .rightcol .panel{position:static;width:auto}
 .pctl .crow+.crow{margin-top:9px}
 .pctl .crow{flex-wrap:nowrap;gap:8px}
-.pctl #viewseg{flex:1;min-width:0}
+.pctl #viewseg{flex:1;min-width:0;width:100%}
 .pctl #viewseg button{white-space:nowrap;flex:1;padding-left:8px;padding-right:8px}
-.pctl #spinbtn{flex:none;white-space:nowrap;box-sizing:border-box;width:66px;height:35px;
-  padding:0;display:flex;align-items:center;justify-content:center;gap:4px;line-height:1}
-.pctl .btn.play{flex:1}
-.zoomctl{width:100%}
-.zoomctl button{flex:none;width:36px;font-size:15px;line-height:1}
-.zlvl{flex:1;display:flex;align-items:center;justify-content:center;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+/* icon-only square buttons: play/pause and spin sit side by side, freeing the
+   view-toggle row above to show all three modes at full width */
+.icobtn{flex:none;box-sizing:border-box;width:44px;height:35px;padding:0;
+  display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1}
+.pctl .btn.reset{flex:1}
 .crow{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
 /* filters that don't apply to the active layer keep their space, dimmed */
 .dis{opacity:.28;pointer-events:none;transition:opacity .2s}

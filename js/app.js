@@ -520,7 +520,7 @@ const CTRY_YEARS=new Set(EVENTS.filter(e=>e.iso).map(e=>e.y));
 let speedMult=1;
 function stepDelay(y){return (CTRY_YEARS.has(y)?1600:950)/speedMult;}
 function pausePlay(){playing=false;clearTimeout(timer);
-  d3.select("#play").html((year!=null&&year<END)?"▶ Resume":"▶ Play 1990–2024");}
+  d3.select("#play").html("▶").attr("title",(year!=null&&year<END)?"Resume":"Play 1990–2024");}
 function tickPlay(){
   if(!playing)return;
   if(year>=END){pausePlay();return;}
@@ -531,7 +531,7 @@ d3.select("#play").on("click",()=>{
   if(playing){pausePlay();return;}
   const fresh=(year==null||year>=END);
   if(year==null)enterTimelapse();
-  playing=true;d3.select("#play").html("❚❚ Pause");
+  playing=true;d3.select("#play").html("❚❚").attr("title","Pause");
   if(fresh){setYear(START,false);timer=setTimeout(tickPlay,stepDelay(START));}
   else timer=setTimeout(tickPlay,300);
 });
@@ -674,7 +674,7 @@ d3.select("#cleanbtn").on("click",function(){
 let autorotate=false,spinning=false,dragging=false,spinOn=true;
 function setSpin(on){
   spinOn=on;
-  d3.select("#spinbtn").html(on?"⏸ Spin":"▶ Spin").classed("on",on);
+  d3.select("#spinbtn").html(on?"⏸":"▶").attr("title",on?"Pause rotation":"Resume rotation").classed("on",on);
   autorotate=on&&view==="globe";
   if(autorotate)startSpin();
 }
@@ -731,16 +731,13 @@ const zoomBeh=d3.zoom().scaleExtent([1,8])
     if(ev.type==="touchstart")return ev.touches.length>1||view==="flat";
     return view==="flat";
   })
-  .on("zoom",(ev)=>{viewport.attr("transform",ev.transform);zoomK=ev.transform.k;
-    d3.select("#zlvl").text(Math.round(zoomK*100)+"%");});
+  .on("zoom",(ev)=>{viewport.attr("transform",ev.transform);zoomK=ev.transform.k;});
 // lock pan to the map's own bounds: at 100% zoom there is zero slack, so panning
 // in then zooming back out always resolves to exactly the original framing
 function syncZoomExtent(){zoomBeh.extent([[0,0],[W,H]]).translateExtent([[0,0],[W,H]]);}
 syncZoomExtent();
 svg.call(zoomBeh).on("dblclick.zoom",null);
 function resetZoom(){svg.transition().duration(300).call(zoomBeh.transform,d3.zoomIdentity);}
-d3.select("#zoomin").on("click",()=>svg.transition().duration(200).call(zoomBeh.scaleBy,1.6));
-d3.select("#zoomout").on("click",()=>svg.transition().duration(200).call(zoomBeh.scaleBy,1/1.6));
 d3.selectAll("#layerseg button").on("click",function(){
   const l=this.dataset.l;if(l===layer)return;
   d3.selectAll("#layerseg button").classed("on",false);d3.select(this).classed("on",true);
