@@ -175,6 +175,7 @@ function buildLabels(){
       ts.filter((_,i)=>i===1).text(g!=null?g+"y":"");});
 }
 function updateLegend(){
+  d3.select("#reglegend").style("display",view==="scatter"?"block":"none");
   if(view==="scatter"){d3.select("#legend").style("display","none");
     d3.select("#legend2").style("display","none");d3.select("#rank").classed("show",false);return;}
   const rankOn=!!highlight,tl=app.classed("tl");
@@ -358,21 +359,41 @@ const AXES={
 };
 const AXIS_ORDER=["gdp","net","speed","mobile","bband","price","mbps","gender","shut","fotn","ixp","ipv6"];
 const HI_COLOR={fast:"#17b8a6",slow:"#e8582c",leap:"#e6b34a",never:"#9aa4b2"};
+// World Bank's 7 regions, fixed alphabetical order, validated categorical palette
+// (dark surface #0e1116, worst all-pairs CVD ΔE 10.3 — floor band, legal with the
+// direct labels + legend this view already ships as secondary encoding)
+const REGION_ORDER=["East Asia & Pacific","Europe & Central Asia","Latin America & Caribbean",
+  "Middle East, North Africa, Afghanistan & Pakistan","North America","South Asia","Sub-Saharan Africa"];
+const REGION_PALETTE=["#3987e5","#12a191","#d95926","#c98500","#008300","#e66767","#d55181"];
+const REGION_COLOR={};REGION_ORDER.forEach((r,i)=>REGION_COLOR[r]=REGION_PALETTE[i]);
+const REGION_NONE="#4a5361";
+const REG=window.REGION||{};
 let scX="gdp",scY="net";
 const scMargin={top:230,right:44,bottom:160,left:66};
 const scDots=scatterSvg.append("g").attr("class","sc-dots");
+const scLabelsG=scatterSvg.append("g").attr("class","sc-labels");
 const scXAxisG=scatterSvg.append("g").attr("class","sc-axis sc-x");
 const scYAxisG=scatterSvg.append("g").attr("class","sc-axis sc-y");
 const scXLbl=scatterSvg.append("text").attr("class","sc-lbl").attr("text-anchor","middle");
 const scYLbl=scatterSvg.append("text").attr("class","sc-lbl").attr("text-anchor","middle");
 const scCountTxt=scatterSvg.append("text").attr("class","sc-count");
-let scXscale=d3.scaleLinear(),scYscale=d3.scaleLinear();
+let scXscale=d3.scaleLinear(),scYscale=d3.scaleLinear(),scPopScale=d3.scaleSqrt().range([3.5,34]);
+const LABEL_N=12; // biggest-by-population countries get a direct label
 
 function populateAxisSelects(){
   const opts=AXIS_ORDER.map(k=>`<option value="${k}">${AXES[k].short}</option>`).join("");
   d3.select("#xaxis").html(opts).property("value",scX);
   d3.select("#yaxis").html(opts).property("value",scY);
 }
+function buildRegionLegend(){
+  const rows=d3.select("#reglegend-rows").selectAll(".ri2").data(REGION_ORDER).join("div")
+    .attr("class","ri2");
+  rows.html("").each(function(r){
+    d3.select(this).append("span").attr("class","c").style("background",REGION_COLOR[r]);
+    d3.select(this).append("span").text(r);
+  });
+}
+buildRegionLegend();
 function padDomain(ext,log){
   let[lo,hi]=ext;
   if(lo==null||hi==null)return[0,1];
@@ -385,7 +406,7 @@ function scatterPoints(yr){
   for(const iso in DATA){
     const xv=xa.get(iso,yr),yv=ya.get(iso,yr);
     if(xv==null||yv==null)continue;
-    out.push({iso,x:xv,y:yv});
+    out.push({iso,x:xv,y:yv,pop:metValueAt("pop",iso,yr),region:REG[iso]});
   }
   return out;
 }
@@ -393,7 +414,9 @@ function scTipHtml(d){
   const nm=DATA[d.iso]?DATA[d.iso].name:d.iso,xa=AXES[scX],ya=AXES[scY];
   return `<h3>${nm}</h3>`
     +`<div class="g"><span>${xa.short}</span><b>${xa.fmt(d.x)}</b></div>`
-    +`<div class="g"><span>${ya.short}</span><b>${ya.fmt(d.y)}</b></div>`;
+    +`<div class="g"><span>${ya.short}</span><b>${ya.fmt(d.y)}</b></div>`
+    +(d.pop!=null?`<div class="g"><span>Population</span><b>${Math.round(d.pop).toLocaleString()}</b></div>`:"")
+    +(d.region?`<div class="g"><span>Region</span><b style="font-weight:500">${d.region}</b></div>`:"");
 }
 function fitScatter(){
   scatterSvg.attr("viewBox",`0 0 ${W} ${H}`);
@@ -413,6 +436,9 @@ function renderScatter(anim){
     .range([scMargin.left,W-scMargin.right]).domain(padDomain(d3.extent(pts,d=>d.x),AXES[scX].log));
   scYscale=(AXES[scY].log?d3.scaleSymlog():d3.scaleLinear())
     .range([H-scMargin.bottom,scMargin.top]).domain(padDomain(d3.extent(pts,d=>d.y),AXES[scY].log));
+  const popExt=d3.extent(pts,d=>d.pop).map(v=>v??0);
+  scPopScale.domain(popExt[0]===popExt[1]?[0,popExt[1]||1]:popExt);
+  const radius=d=>d.pop!=null?scPopScale(d.pop):5.5;
   const xAx=d3.axisBottom(scXscale).ticks(AXES[scX].log?4:6).tickSizeOuter(0);
   const yAx=d3.axisLeft(scYscale).ticks(AXES[scY].log?5:6).tickSizeOuter(0);
   if(AXES[scX].log)xAx.tickFormat(d3.format("~s"));
@@ -424,7 +450,9 @@ function renderScatter(anim){
   scXLbl.text(AXES[scX].lbl);
   scYLbl.text(AXES[scY].lbl);
   scCountTxt.text(`${pts.length} of ${Object.keys(DATA).length} countries · ${yr}`);
-  const sel=scDots.selectAll("circle.sc-dot").data(pts,d=>d.iso);
+  // bubbles sort smallest-on-top-of-largest so big countries never bury small ones
+  const ordered=[...pts].sort((a,b)=>(b.pop||0)-(a.pop||0));
+  const sel=scDots.selectAll("circle.sc-dot").data(ordered,d=>d.iso);
   sel.exit().transition().duration(280).attr("r",0).remove();
   const en=sel.enter().append("circle").attr("class","sc-dot").attr("r",0)
     .attr("cx",d=>scXscale(d.x)).attr("cy",d=>scYscale(d.y))
@@ -433,10 +461,20 @@ function renderScatter(anim){
     .on("click",(e,d)=>openPanel(d.iso));
   const merged=en.merge(sel);
   const t=anim?merged.transition().duration(420):merged;
-  t.attr("cx",d=>scXscale(d.x)).attr("cy",d=>scYscale(d.y))
-    .attr("r",d=>highlight?(inHi(d.iso)?6.5:3.2):4.6)
-    .attr("fill",d=>highlight&&inHi(d.iso)?HI_COLOR[highlight]:null)
-    .attr("fill-opacity",d=>highlight&&!inHi(d.iso)?.15:null);
+  t.attr("cx",d=>scXscale(d.x)).attr("cy",d=>scYscale(d.y)).attr("r",radius)
+    .attr("fill",d=>highlight&&inHi(d.iso)?HI_COLOR[highlight]:(REGION_COLOR[d.region]||REGION_NONE))
+    .attr("fill-opacity",d=>highlight&&!inHi(d.iso)?.12:null)
+    .attr("stroke",d=>highlight&&inHi(d.iso)?"#fff":null).attr("stroke-width",d=>highlight&&inHi(d.iso)?1.4:null);
+  scDots.selectAll("circle.sc-dot").sort((a,b)=>(b.pop||0)-(a.pop||0));
+  const labelSet=[...pts].sort((a,b)=>(b.pop||0)-(a.pop||0)).slice(0,LABEL_N);
+  const lsel=scLabelsG.selectAll("text.sc-dotlbl").data(labelSet,d=>d.iso);
+  lsel.exit().remove();
+  const len=lsel.enter().append("text").attr("class","sc-dotlbl");
+  const lmerged=len.merge(lsel);
+  const lt=anim?lmerged.transition().duration(420):lmerged;
+  lt.attr("x",d=>scXscale(d.x)).attr("y",d=>scYscale(d.y)-radius(d)-6)
+    .text(d=>DATA[d.iso]?DATA[d.iso].name:d.iso)
+    .style("opacity",d=>highlight&&!inHi(d.iso)?.15:1);
 }
 d3.select("#xaxis").on("change",function(){scX=this.value;renderScatter(true);});
 d3.select("#yaxis").on("change",function(){scY=this.value;renderScatter(true);});

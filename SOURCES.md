@@ -91,6 +91,12 @@ Tutte le fonti del progetto Internet Adoption Map sono pubbliche, scaricabili e 
 - **Copertura:** 257 paesi/territori, dal 1990
 - **Uso:** asse predefinito della vista Scatter (fase 1c) — l'asse X di default insieme a "% online" sull'asse Y, il grafico Gapminder-style menzionato nel piano originale
 
+### Popolazione e regione (per la vista Scatter)
+- **Fonte:** World Bank API, indicatore `SP.POP.TOTL` (popolazione totale, serie storica dal 1990) per le dimensioni delle bolle; il campo `region` della stessa chiamata all'elenco paesi World Bank (7 regioni standard) per il colore
+- **Copertura:** popolazione 260 paesi/territori; regione 217 paesi/territori
+- **File generato:** `data/region.js` (mappa iso3 → nome regione, statica, non è una serie temporale — a differenza degli altri dataset non ha lo shape `{sy,v}`)
+- **Uso:** trasforma la vista Scatter in un vero grafico a bolle stile Gapminder — dimensione bolla = popolazione (scala sqrt, area proporzionale), colore = regione (palette categorica validata per accessibilità CVD), etichette dirette sui 12 paesi più popolosi visibili
+
 ---
 
 ## 3. Cavi sottomarini

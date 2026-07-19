@@ -26,10 +26,14 @@ svg.globe{cursor:grab} svg.globe.grab{cursor:grabbing}
 #scatter .sc-grid line{stroke:#1b222c;stroke-width:.6px}
 #scatter .sc-lbl{fill:var(--muted);font-size:12.5px;font-weight:600;letter-spacing:.02em}
 #scatter .sc-lbl.y{writing-mode:vertical-rl;text-orientation:mixed}
-.sc-dot{fill:var(--accent);fill-opacity:.68;stroke:#0e1116;stroke-width:.6px;cursor:pointer;
+/* fill/stroke are per-datum (region colour) via the fill attribute — a CSS fill
+   here would beat the SVG presentation attribute and flatten every dot to one hue */
+.sc-dot{fill-opacity:.78;stroke:#0e1116;stroke-width:.8px;cursor:pointer;
   transition:fill-opacity .2s,r .15s}
-.sc-dot:hover{fill-opacity:1;stroke:#fff;stroke-width:1.2px}
+.sc-dot:hover{fill-opacity:1;stroke:#fff;stroke-width:1.4px}
 #scatter .sc-count{fill:#5c6572;font-size:10.5px}
+.sc-dotlbl{fill:var(--ink);font-size:10.5px;font-weight:600;paint-order:stroke;stroke:#0b0e12;
+  stroke-width:3px;stroke-linejoin:round;pointer-events:none;text-anchor:middle}
 /* below this width the centred axis title can collide with the side panels;
    the axis dropdowns already state the same thing, so just drop it */
 @media(max-width:1300px){#scatter .sc-lbl{display:none}}
@@ -126,6 +130,9 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:30px;line-height
 .ri .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ri .vv{color:var(--muted);font-variant-numeric:tabular-nums}
 .ri .c{width:11px;height:11px;border-radius:3px;flex:none}
+.rl2{display:flex;flex-direction:column;gap:6px}
+.rl2 .ri2{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ink)}
+.rl2 .c{width:11px;height:11px;border-radius:50%;flex:none}
 
 .year{position:absolute;top:62px;right:30px;text-align:right;z-index:6;opacity:0;transition:opacity .3s}
 .year.show{opacity:1}
