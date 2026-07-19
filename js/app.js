@@ -64,6 +64,7 @@ let mode="g50",view="globe",layer="speed",year=null,highlight=null,playing=false
 let feats50=[],feats110=[],loaded=false,centroid={};
 
 const svg=d3.select("#map"),tip=d3.select("#tip"),app=d3.select("#app");
+const scatterSvg=d3.select("#scatter");
 let W=innerWidth,H=innerHeight;
 const projFlat=d3.geoNaturalEarth1();
 const projGlobe=d3.geoOrthographic().rotate([-12,-18]).clipAngle(90);
@@ -116,6 +117,7 @@ function bindGeo(){
 }
 function fit(){
   W=innerWidth;H=innerHeight;
+  if(view==="scatter"){fitScatter();return;}
   if(view==="flat"){proj=projFlat;proj.fitExtent([[12,92],[W-12,H-84]],{type:"Sphere"});
     sphere.attr("fill","#0e1116");svg.classed("globe",false);}
   else{proj=projGlobe;const R=Math.min(W-40,H-150);
@@ -148,6 +150,7 @@ function styleGeo(sel,tf){
   sel.filter(tf).raise();
 }
 function paint(anim){
+  if(view==="scatter"){renderScatter(anim);return;}
   const L=gGeo.selectAll("path.land");
   (anim?L.transition().duration(420):L).attr("fill",d=>colorOf(d.__iso));
   styleGeo(L,d=>inHi(d.__iso));
@@ -172,6 +175,8 @@ function buildLabels(){
       ts.filter((_,i)=>i===1).text(g!=null?g+"y":"");});
 }
 function updateLegend(){
+  if(view==="scatter"){d3.select("#legend").style("display","none");
+    d3.select("#legend2").style("display","none");d3.select("#rank").classed("show",false);return;}
   const rankOn=!!highlight,tl=app.classed("tl");
   const mag=tl?(layer==="speed"?"net":layer):(layer!=="speed"?layer:null);
   d3.select("#legend").style("display",(!rankOn&&!mag)?null:"none");
@@ -323,6 +328,120 @@ function setYear(y,anim){
   d3.select("#yworld").text(wv!=null?` · world ${Math.round(wv)}% online`:"");
   updateEvents();updateCursor();updateCables();paint(anim);
 }
+
+/* ── scatter view: Gapminder-style, animated over the same timelapse year ── */
+const AXES={
+  gdp:{lbl:"GDP per capita (US$)",short:"GDP / capita",log:true,
+    get:(iso,yr)=>metValueAt("gdp",iso,yr),fmt:v=>"$"+Math.round(v).toLocaleString()},
+  net:{lbl:"Share of people online",short:"% online",log:false,
+    get:(iso,yr)=>valueAt(iso,yr),fmt:v=>v+"%"},
+  speed:{lbl:"Years from 10% to 50% online",short:"Adoption speed",log:false,
+    get:iso=>DATA[iso]?DATA[iso].gap50:null,fmt:v=>v+" yr"},
+  mobile:{lbl:"Mobile subscriptions / 100 people",short:"Mobile /100",log:false,
+    get:(iso,yr)=>metValueAt("mobile",iso,yr),fmt:v=>v+" /100"},
+  bband:{lbl:"Fixed broadband / 100 people",short:"Broadband /100",log:false,
+    get:(iso,yr)=>metValueAt("bband",iso,yr),fmt:v=>v+" /100"},
+  price:{lbl:"Price of 1GB mobile data (USD)",short:"1GB price",log:true,
+    get:(iso,yr)=>metValueAt("price",iso,yr),fmt:v=>"$"+v},
+  mbps:{lbl:"Median mobile download speed",short:"Mobile Mbps",log:true,
+    get:(iso,yr)=>metValueAt("mbps",iso,yr),fmt:v=>fmt1(v)+" Mbps"},
+  gender:{lbl:"Women online per man online",short:"Gender parity",log:false,
+    get:(iso,yr)=>metValueAt("gender",iso,yr),fmt:v=>v},
+  shut:{lbl:"Internet shutdowns since 2016",short:"Shutdowns",log:true,
+    get:(iso,yr)=>metValueAt("shut",iso,yr),fmt:v=>Math.round(v)},
+  fotn:{lbl:"Freedom on the Net score",short:"Net freedom",log:false,
+    get:(iso,yr)=>metValueAt("fotn",iso,yr),fmt:v=>Math.round(v)+"/100"},
+  ixp:{lbl:"Internet exchange points",short:"IXPs",log:true,
+    get:(iso,yr)=>metValueAt("ixp",iso,yr),fmt:v=>Math.round(v)},
+  ipv6:{lbl:"Native IPv6 adoption",short:"IPv6 %",log:false,
+    get:(iso,yr)=>metValueAt("ipv6",iso,yr),fmt:v=>fmt1(v)+"%"},
+};
+const AXIS_ORDER=["gdp","net","speed","mobile","bband","price","mbps","gender","shut","fotn","ixp","ipv6"];
+const HI_COLOR={fast:"#17b8a6",slow:"#e8582c",leap:"#e6b34a",never:"#9aa4b2"};
+let scX="gdp",scY="net";
+const scMargin={top:230,right:44,bottom:160,left:66};
+const scDots=scatterSvg.append("g").attr("class","sc-dots");
+const scXAxisG=scatterSvg.append("g").attr("class","sc-axis sc-x");
+const scYAxisG=scatterSvg.append("g").attr("class","sc-axis sc-y");
+const scXLbl=scatterSvg.append("text").attr("class","sc-lbl").attr("text-anchor","middle");
+const scYLbl=scatterSvg.append("text").attr("class","sc-lbl").attr("text-anchor","middle");
+const scCountTxt=scatterSvg.append("text").attr("class","sc-count");
+let scXscale=d3.scaleLinear(),scYscale=d3.scaleLinear();
+
+function populateAxisSelects(){
+  const opts=AXIS_ORDER.map(k=>`<option value="${k}">${AXES[k].short}</option>`).join("");
+  d3.select("#xaxis").html(opts).property("value",scX);
+  d3.select("#yaxis").html(opts).property("value",scY);
+}
+function padDomain(ext,log){
+  let[lo,hi]=ext;
+  if(lo==null||hi==null)return[0,1];
+  if(lo===hi){lo-=Math.abs(lo)*.1||1;hi+=Math.abs(hi)*.1||1;}
+  const pad=(hi-lo)*.08;
+  return[log?Math.max(0,lo-pad):lo-pad,hi+pad];
+}
+function scatterPoints(yr){
+  const xa=AXES[scX],ya=AXES[scY],out=[];
+  for(const iso in DATA){
+    const xv=xa.get(iso,yr),yv=ya.get(iso,yr);
+    if(xv==null||yv==null)continue;
+    out.push({iso,x:xv,y:yv});
+  }
+  return out;
+}
+function scTipHtml(d){
+  const nm=DATA[d.iso]?DATA[d.iso].name:d.iso,xa=AXES[scX],ya=AXES[scY];
+  return `<h3>${nm}</h3>`
+    +`<div class="g"><span>${xa.short}</span><b>${xa.fmt(d.x)}</b></div>`
+    +`<div class="g"><span>${ya.short}</span><b>${ya.fmt(d.y)}</b></div>`;
+}
+function fitScatter(){
+  scatterSvg.attr("viewBox",`0 0 ${W} ${H}`);
+  scXscale.range([scMargin.left,W-scMargin.right]);
+  scYscale.range([H-scMargin.bottom,scMargin.top]);
+  scXLbl.attr("x",(scMargin.left+W-scMargin.right)/2).attr("y",H-38);
+  scYLbl.attr("x",-(H-scMargin.top-scMargin.bottom)/2-scMargin.top).attr("y",22)
+    .attr("transform","rotate(-90)");
+  scCountTxt.attr("x",W-scMargin.right).attr("y",scMargin.top-16).attr("text-anchor","end");
+  renderScatter(false);
+}
+function renderScatter(anim){
+  if(view!=="scatter")return;
+  const yr=year!=null?year:END;
+  const pts=scatterPoints(yr);
+  scXscale=(AXES[scX].log?d3.scaleSymlog():d3.scaleLinear())
+    .range([scMargin.left,W-scMargin.right]).domain(padDomain(d3.extent(pts,d=>d.x),AXES[scX].log));
+  scYscale=(AXES[scY].log?d3.scaleSymlog():d3.scaleLinear())
+    .range([H-scMargin.bottom,scMargin.top]).domain(padDomain(d3.extent(pts,d=>d.y),AXES[scY].log));
+  const xAx=d3.axisBottom(scXscale).ticks(AXES[scX].log?4:6).tickSizeOuter(0);
+  const yAx=d3.axisLeft(scYscale).ticks(AXES[scY].log?5:6).tickSizeOuter(0);
+  if(AXES[scX].log)xAx.tickFormat(d3.format("~s"));
+  if(AXES[scY].log)yAx.tickFormat(d3.format("~s"));
+  (anim?scXAxisG.transition().duration(420):scXAxisG)
+    .attr("transform",`translate(0,${H-scMargin.bottom})`).call(xAx);
+  (anim?scYAxisG.transition().duration(420):scYAxisG)
+    .attr("transform",`translate(${scMargin.left},0)`).call(yAx);
+  scXLbl.text(AXES[scX].lbl);
+  scYLbl.text(AXES[scY].lbl);
+  scCountTxt.text(`${pts.length} of ${Object.keys(DATA).length} countries · ${yr}`);
+  const sel=scDots.selectAll("circle.sc-dot").data(pts,d=>d.iso);
+  sel.exit().transition().duration(280).attr("r",0).remove();
+  const en=sel.enter().append("circle").attr("class","sc-dot").attr("r",0)
+    .attr("cx",d=>scXscale(d.x)).attr("cy",d=>scYscale(d.y))
+    .on("mousemove",(e,d)=>{tip.html(scTipHtml(d)).style("opacity",1);move(e);})
+    .on("mouseleave",leave)
+    .on("click",(e,d)=>openPanel(d.iso));
+  const merged=en.merge(sel);
+  const t=anim?merged.transition().duration(420):merged;
+  t.attr("cx",d=>scXscale(d.x)).attr("cy",d=>scYscale(d.y))
+    .attr("r",d=>highlight?(inHi(d.iso)?6.5:3.2):4.6)
+    .attr("fill",d=>highlight&&inHi(d.iso)?HI_COLOR[highlight]:null)
+    .attr("fill-opacity",d=>highlight&&!inHi(d.iso)?.15:null);
+}
+d3.select("#xaxis").on("change",function(){scX=this.value;renderScatter(true);});
+d3.select("#yaxis").on("change",function(){scY=this.value;renderScatter(true);});
+populateAxisSelects();
+
 function fitFilters(){
   // flex-wrap leaves the panel at max-width even when its wrapped lines end
   // short of the edge — shrink it to the widest actual line
@@ -524,7 +643,20 @@ function setSpin(on){
 d3.selectAll("#viewseg button").on("click",function(){
   const v=this.dataset.v;if(v===view)return;
   d3.selectAll("#viewseg button").classed("on",false);d3.select(this).classed("on",true);
-  view=v;bindGeo();fit();resetZoom();
+  view=v;
+  const isScatter=view==="scatter";
+  svg.style("display",isScatter?"none":null);
+  scatterSvg.style("display",isScatter?null:"none");
+  d3.select("#datagrp").style("display",isScatter?"none":null);
+  d3.select("#axisgrp").style("display",isScatter?"flex":"none");
+  d3.select("#threshgrp").style("display",isScatter?"none":null);
+  d3.select("#cablegrp").style("display",isScatter?"none":null);
+  d3.select(".zoomctl").style("display",isScatter?"none":null);
+  d3.select("#hirow").classed("dis",!isScatter&&layer!=="speed");
+  d3.select("#hint").classed("show",false);
+  if(!isScatter){bindGeo();}
+  fit();resetZoom();
+  updateLegend();updateTlPos();
   d3.select("#spinbtn").style("display",view==="globe"?null:"none");
   if(view==="globe"){d3.select("#hint").classed("show",true);setTimeout(()=>d3.select("#hint").classed("show",false),3200);
     setSpin(spinOn);}else{autorotate=false;}

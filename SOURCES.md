@@ -85,6 +85,12 @@ Tutte le fonti del progetto Internet Adoption Map sono pubbliche, scaricabili e 
 - **Copertura:** 216 paesi/territori
 - **Nota:** solo snapshot corrente, nessuno storico (il file non contiene serie temporali)
 
+### GDP pro capite
+- **Fonte:** World Bank API, indicatore `NY.GDP.PCAP.CD` (USD correnti)
+- **Metrica:** GDP pro capite, serie storica completa (come mobile/broadband, non uno snapshot)
+- **Copertura:** 257 paesi/territori, dal 1990
+- **Uso:** asse predefinito della vista Scatter (fase 1c) — l'asse X di default insieme a "% online" sull'asse Y, il grafico Gapminder-style menzionato nel piano originale
+
 ---
 
 ## 3. Cavi sottomarini

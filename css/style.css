@@ -18,6 +18,21 @@ svg.globe{cursor:grab} svg.globe.grab{cursor:grabbing}
 
 .cable{fill:none;stroke:#5b9ce8;stroke-linecap:round;stroke-linejoin:round;pointer-events:stroke;cursor:pointer;
   transition:stroke-opacity .5s,stroke-width .3s}
+
+/* ── scatter view ──────────────────────────────────────────────── */
+#scatter .sc-axis path,#scatter .sc-axis line{stroke:#2a333f}
+#scatter .sc-axis text{fill:var(--muted);font-size:11px;font-family:Inter,sans-serif}
+#scatter .sc-axis .tick line{stroke:#1b222c}
+#scatter .sc-grid line{stroke:#1b222c;stroke-width:.6px}
+#scatter .sc-lbl{fill:var(--muted);font-size:12.5px;font-weight:600;letter-spacing:.02em}
+#scatter .sc-lbl.y{writing-mode:vertical-rl;text-orientation:mixed}
+.sc-dot{fill:var(--accent);fill-opacity:.68;stroke:#0e1116;stroke-width:.6px;cursor:pointer;
+  transition:fill-opacity .2s,r .15s}
+.sc-dot:hover{fill-opacity:1;stroke:#fff;stroke-width:1.2px}
+#scatter .sc-count{fill:#5c6572;font-size:10.5px}
+/* below this width the centred axis title can collide with the side panels;
+   the axis dropdowns already state the same thing, so just drop it */
+@media(max-width:1300px){#scatter .sc-lbl{display:none}}
 .cable.laid{stroke-opacity:.38;stroke-width:1px}
 .cable.laid:hover{stroke-opacity:.9;stroke-width:1.6px}
 .cable.fresh{stroke-opacity:.95;stroke-width:1.8px;filter:drop-shadow(0 0 3px rgba(91,156,232,.85))}
@@ -58,6 +73,10 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:30px;line-height
 .dis{opacity:.28;pointer-events:none;transition:opacity .2s}
 #threshgrp,#hirow{transition:opacity .2s}
 .grp{display:flex;align-items:center;gap:7px}
+.axsel{background:var(--panel);border:1px solid var(--line);color:var(--ink);padding:7px 9px;
+  border-radius:9px;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;max-width:150px}
+.axsel:hover{border-color:#3a4552}
+.axvs{font-size:11px;color:#5c6572;font-weight:600}
 .grp .gl,.crow>.gl{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#5c6572;font-weight:600}
 .seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:9px;overflow:hidden}
 /* nine data tags: wrap whole buttons to the next line, never the label text */
