@@ -20,6 +20,8 @@ An interactive data visualization exploring 30 years of internet adoption (1990�
 - **Highlight groups** — isolate the fastest, slowest, "leapfrog," and never-reached-50% countries with one click.
 - **Country tooltips and ranked leaderboard** — hover any country for its exact timeline (including its share online in the selected timelapse year); see a live top/bottom ranking as you filter.
 - **Clean mode** — hide all UI chrome for a distraction-free view of the map itself.
+- **Self-refreshing data** — a monthly GitHub Action reruns the entire pipeline against live upstream sources and commits whatever changed, with a sanity check that refuses to commit if a source looks broken (see [Keeping it live](#keeping-it-live) below). A quiet "Data refreshed \<month year\>" badge states exactly when that last happened.
+- **Estimated live counter** — "≈ N people online right now" in the header, extrapolated client-side from the last two real data years' growth rate to the current date and ticking up every second. Clearly labelled as an estimate, not a live feed — see the methodology note below.
 
 ## Project structure
 
@@ -32,12 +34,39 @@ data/metrics.js        mobile & fixed-broadband subs per 100 people (generated)
 data/extras.js         1GB price, median Mbps, gender parity, GDP, population… (generated)
 data/region.js         iso3 -> World Bank region, scatter view bubble colour (generated)
 data/cables.js         submarine cable routes + ready-for-service years (generated)
+data/meta.js            "data refreshed" timestamp for the UI badge (generated)
 data/geo.js            topojson-id → ISO lookups, small-territory dots
 data/events.js         curated internet-history milestones
 scripts/build_data.py  regenerates adoption.js + metrics.js (OWID + World Bank)
-scripts/build_extras.py regenerates extras.js (Cable.co.uk + Ookla + World Bank)
-scripts/build_cables.py regenerates cables.js (TeleGeography mirror)
+scripts/build_extras.py regenerates extras.js + region.js (Cable.co.uk, Ookla, World Bank, PeeringDB, Google, Access Now, Freedom House)
+scripts/build_cables.py regenerates cables.js (TeleGeography, live API)
+scripts/build_meta.py  regenerates meta.js (just today's date)
+scripts/check_data.py  sanity-checks record counts across all generated files
+.github/workflows/refresh-data.yml   the monthly refresh described below
 ```
+
+## Keeping it live
+
+`.github/workflows/refresh-data.yml` runs on the 1st of every month (and on
+demand via the "Run workflow" button in the Actions tab): it reruns the full
+pipeline (`build_data.py` → `build_extras.py` → `build_cables.py` →
+`build_meta.py`), then `check_data.py` — which refuses to let the run commit
+if any dataset's record count falls below a hard floor, so a source that
+silently changed its page layout or returned an empty response can't quietly
+overwrite good data with broken data. If everything passes and something
+actually changed, it commits straight to `main` and pushes; GitHub Pages
+picks it up immediately since there's no build step. If nothing changed
+upstream, it's a no-op.
+
+Note: GitHub only fires a workflow's `schedule` trigger from the copy of the
+file on the repo's **default branch** — so the cron is inert on any other
+branch until this file is merged there.
+
+The header's "≈ N people online right now" counter is **not** live data —
+it's computed once per page load from the last two real annual data points
+(summed per-country: % online × population), extrapolated forward at that
+growth rate to the current date, then ticked up client-side once a second
+for the animated effect. It's an honest estimate stated as one, not a feed.
 
 ## Data
 

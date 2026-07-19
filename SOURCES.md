@@ -172,6 +172,11 @@ Tutte le fonti del progetto Internet Adoption Map sono pubbliche, scaricabili e 
 
 ## Come aggiornare i dati
 
+### Aggiornamento automatico (GitHub Action)
+Da `.github/workflows/refresh-data.yml`: gira il 1° di ogni mese (e a comando dal tab Actions), rilancia tutta la pipeline, esegue `scripts/check_data.py` (rifiuta il commit se un dataset scende sotto una soglia minima — protezione contro fonti che cambiano formato o rispondono vuote), e se qualcosa è davvero cambiato committa e pusha su `main` da solo. Il badge "Data refreshed" in UI (in alto a destra) legge `data/meta.js`, generato da `scripts/build_meta.py`.
+
+**Nota:** il trigger `schedule` di GitHub parte solo dalla versione del workflow presente sul branch di default (`main`) — finché questo file resta solo su `dev`, il cron è inerte.
+
 ### Penetrazione internet e metriche (mobile/broadband)
 ```bash
 cd /path/to/world-internet-map

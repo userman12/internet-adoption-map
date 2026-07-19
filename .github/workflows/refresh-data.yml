@@ -1,0 +1,54 @@
+name: Monthly data refresh
+
+# Runs the whole data pipeline against live upstream sources (OWID, World
+# Bank, Cable.co.uk, Ookla, PeeringDB, Google, Access Now, Freedom House,
+# TeleGeography) and commits whatever changed — so the dashboard never goes
+# stale without anyone touching it by hand.
+#
+# Note: GitHub only fires `schedule` triggers from workflow files as they
+# exist on the repo's default branch. Until this file is merged there, the
+# cron below is inert — `workflow_dispatch` (the manual "Run workflow"
+# button in the Actions tab) works from any branch and is the way to test it
+# before that merge happens.
+
+on:
+  schedule:
+    - cron: "0 6 1 * *"  # 06:00 UTC on the 1st of every month
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # no requirements.txt on purpose — every script here is stdlib-only
+
+      - name: Run data pipeline
+        run: |
+          python3 scripts/build_data.py
+          python3 scripts/build_extras.py
+          python3 scripts/build_cables.py
+          python3 scripts/build_meta.py
+
+      - name: Sanity-check the results
+        run: python3 scripts/check_data.py
+
+      - name: Commit and push if anything changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "no data changes this run"
+          else
+            git commit -m "Monthly data refresh ($(date -u +%Y-%m-%d))"
+            git push
+          fi

@@ -8,6 +8,11 @@
 
 const DATA={}; ADOPTION.countries.forEach(c=>DATA[c.iso]=c);
 const WORLD=ADOPTION.world||null;
+if(window.META&&window.META.generated){
+  const[gy,gm]=window.META.generated.split("-");
+  const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  d3.select("#freshdate").text(MONTHS[+gm-1]+" "+gy);
+}
 const MET=Object.assign({mobile:{},bband:{}},window.METRICS||{},window.EXTRAS||{});
 const N2I=GEO.num2iso, DOTS=GEO.dots, NUM2NAME=GEO.num2name;
 const FAST=["KOR","CYM","CAN","SVK","KAZ","NOR","AUS","CHE","NZL","SWE"];
@@ -95,6 +100,26 @@ function metValueAt(kind,iso,yr){
   if(kind==="net"||kind==="speed")return valueAt(iso,yr);
   const s=MET[kind]&&MET[kind][iso];if(!s||yr<s.sy)return null;
   return s.v[Math.min(yr,END)-s.sy];}
+
+/* ── header "people online right now": a labelled estimate, not a live feed —
+   sums (% online × population) per country for the last two real data years,
+   then extrapolates that growth rate forward to the current wall-clock date */
+(function initLiveCounter(){
+  const usersAt=yr=>{let s=0;
+    for(const iso in DATA){
+      const pct=valueAt(iso,yr),pop=metValueAt("pop",iso,yr);
+      if(pct!=null&&pop!=null)s+=pct/100*pop;
+    }
+    return s;};
+  const uEnd=usersAt(END),growthPerYear=uEnd-usersAt(END-1);
+  const MS_PER_YEAR=365.25*24*3600*1000,refMs=Date.UTC(END+1,0,1);
+  function tick(){
+    const yrs=Math.max(0,(Date.now()-refMs)/MS_PER_YEAR);
+    const n=Math.round(uEnd+growthPerYear*yrs);
+    d3.select("#livenum").text(n.toLocaleString("en-US"));
+  }
+  tick();setInterval(tick,1000);
+})();
 function baseColor(iso){const d=DATA[iso];if(!d)return NODATA;const g=gapOf(d);
   if(g==null)return d.y10!=null?CENSOR:NEVER;return scale(g);}
 function colorOf(iso){
