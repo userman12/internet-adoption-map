@@ -699,7 +699,10 @@ d3.select("#cleanbtn").on("click",function(){
 let autorotate=false,spinning=false,dragging=false,spinOn=true;
 function setSpin(on){
   spinOn=on;
-  d3.select("#spinbtn").html(on?"⏸":"▶").attr("title",on?"Pause rotation":"Resume rotation").classed("on",on);
+  // always the rotation glyph (never a media play/pause, so it can't be mistaken
+  // for the timelapse button next to it); the accent ".on" state shows it's active
+  d3.select("#spinbtn").classed("on",on)
+    .attr("title",on?"Stop globe rotation":"Spin the globe");
   autorotate=on&&view==="globe";
   if(autorotate)startSpin();
 }
