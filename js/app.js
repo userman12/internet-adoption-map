@@ -670,7 +670,40 @@ function updateCursor(){
   if(year!=null)d3.select("#cpcursor").attr("x1",cpX(year)).attr("x2",cpX(year));
 }
 d3.select("#cpx").on("click",closePanel);
-addEventListener("keydown",e=>{if(e.key==="Escape")closePanel();});
+
+/* ── keyboard shortcuts ────────────────────────────────────────────────
+   ←/→ step year · space play/pause · 1-9,0 pick layer · F/G/S switch view
+   · Esc close panel. All routed through the real controls so behaviour and
+   URL-sync stay identical to clicking. Ignored while typing in a field.    */
+function stepYear(d){
+  if(year==null){enterTimelapse();setYear(d>0?START:END,false);return;}
+  pausePlay();setYear(Math.max(START,Math.min(END,year+d)),false);
+}
+function pickView(v){
+  const b=document.querySelector(`#viewseg button[data-v="${v}"]`);
+  if(b)b.click();
+}
+addEventListener("keydown",e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  const t=e.target,tag=t&&t.tagName;
+  if(tag==="INPUT"||tag==="SELECT"||tag==="TEXTAREA"||(t&&t.isContentEditable))return;
+  switch(e.key){
+    case "Escape":closePanel();return;
+    case "ArrowLeft":e.preventDefault();stepYear(-1);return;
+    case "ArrowRight":e.preventDefault();stepYear(1);return;
+    case " ":case "Spacebar":e.preventDefault();
+      if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+      document.getElementById("play").click();return;
+    case "f":case "F":pickView("flat");return;
+    case "g":case "G":pickView("globe");return;
+    case "s":case "S":pickView("scatter");return;
+  }
+  if(/^[0-9]$/.test(e.key)&&view!=="scatter"){
+    const idx=e.key==="0"?9:(+e.key-1);
+    const btns=document.querySelectorAll("#layerseg button");
+    if(btns[idx]){e.preventDefault();btns[idx].click();}
+  }
+});
 
 /* ── boot: load geometry ───────────────────────────────────────── */
 Promise.all([
