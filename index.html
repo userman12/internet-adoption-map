@@ -32,10 +32,10 @@
     <div class="kicker">30 years of the internet · 1990–2024</div>
     <h1>The race to half online</h1>
     <p class="sub">Colour = years each country took to climb from <b>10%</b> to <b>50%</b> of people online. It wasn't the latecomers who moved fastest — it was the <b>rich</b>. The slowest were middle-income countries that put an elite online early, then stalled for a decade. Press play to watch it happen, milestone by milestone.</p>
-    <p class="livecount" id="livecount" title="Estimated: extrapolated from the World Bank/OWID trend, not a live feed">≈ <b id="livenum">—</b> people online right now</p>
+    <p class="livecount" id="livecount" aria-live="polite" title="Estimated: extrapolated from the World Bank/OWID trend, not a live feed">≈ <b id="livenum">—</b> people online right now</p>
     <p class="credit">Built with internet by <a href="https://x.com/userluke_" target="_blank" rel="noopener">@userluke_</a> · <a href="https://github.com/userman12/internet-adoption-map" target="_blank" rel="noopener">source on GitHub</a></p>
   </div>
-  <div class="year" id="yearbox"><div class="yy" id="yy">1990</div><div class="yc"><b id="ycount">0</b> countries ≥<span id="ythr">50</span>%<span id="yworld"></span></div></div>
+  <div class="year" id="yearbox" role="status" aria-live="polite"><div class="yy" id="yy">1990</div><div class="yc"><b id="ycount">0</b> countries ≥<span id="ythr">50</span>%<span id="yworld"></span></div></div>
   <div class="foot ov">Source: Our World in Data / ITU (2025)<br/>Fixed borders · colour = adoption speed</div>
   <div class="freshbadge ov" id="freshbadge" title="When the data pipeline last pulled fresh numbers from every source">Data refreshed <span id="freshdate">—</span></div>
   <div class="hint ov" id="hint">drag to spin the globe</div>
@@ -44,7 +44,7 @@
   <div class="controls ov" id="filters">
     <div class="crow">
       <div class="grp" id="datagrp"><span class="gl">Data</span>
-        <div class="seg" id="layerseg"><button data-l="speed" class="on">Speed</button><button data-l="net">% online</button><button data-l="mobile">Mobile</button><button data-l="bband">Broadband</button><button data-l="price">$ 1GB</button><button data-l="mbps">Mbps</button><button data-l="gender">Gender</button><button data-l="shut">Shutdowns</button><button data-l="fotn">Freedom</button><button data-l="ixp">IXPs</button><button data-l="ipv6">IPv6</button></div>
+        <div class="seg" id="layerseg" role="group" aria-label="Data layer"><button data-l="speed" class="on">Speed</button><button data-l="net">% online</button><button data-l="mobile">Mobile</button><button data-l="bband">Broadband</button><button data-l="price">$ 1GB</button><button data-l="mbps">Mbps</button><button data-l="gender">Gender</button><button data-l="shut">Shutdowns</button><button data-l="fotn">Freedom</button><button data-l="ixp">IXPs</button><button data-l="ipv6">IPv6</button></div>
       </div>
       <div class="grp" id="axisgrp" style="display:none"><span class="gl">Axes</span>
         <select id="xaxis" class="axsel" aria-label="X axis"></select>
@@ -52,13 +52,13 @@
         <select id="yaxis" class="axsel" aria-label="Y axis"></select>
       </div>
       <div class="grp" id="threshgrp"><span class="gl">Race</span>
-        <div class="seg" id="thresh"><button data-m="g50" class="on">10 → 50%</button><button data-m="g40">10 → 40%</button></div>
+        <div class="seg" id="thresh" role="group" aria-label="Adoption race threshold"><button data-m="g50" class="on">10 → 50%</button><button data-m="g40">10 → 40%</button></div>
       </div>
       <div class="grp" id="cablegrp"><span class="gl">Overlay</span>
         <button class="btn h h-cable" id="cablesbtn"><span class="d"></span>Submarine cables</button>
       </div>
     </div>
-    <div class="crow" id="hirow">
+    <div class="crow" id="hirow" role="group" aria-label="Highlight countries by adoption pace">
       <span class="gl">Highlight</span>
       <button class="btn h h-fast" data-h="fast"><span class="d"></span>Fastest</button>
       <button class="btn h h-slow" data-h="slow"><span class="d"></span>Slowest</button>
@@ -100,7 +100,7 @@
     </div>
     <div class="panel pctl">
       <div class="crow">
-        <div class="seg" id="viewseg"><button data-v="flat">Flat map</button><button data-v="globe" class="on">3D globe</button><button data-v="scatter">Scatter</button></div>
+        <div class="seg" id="viewseg" role="group" aria-label="Map view"><button data-v="flat">Flat map</button><button data-v="globe" class="on">3D globe</button><button data-v="scatter">Scatter</button></div>
       </div>
       <div class="crow">
         <button class="btn play icobtn" id="play" title="Play timelapse 1990–2024" aria-label="Play timelapse 1990–2024">▶</button>

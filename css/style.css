@@ -246,3 +246,15 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:30px;line-height
   .grp .gl,.crow>.gl{display:none}h1{font-size:23px}
   .year .yy{font-size:38px}.ev{width:220px;top:118px}
 }
+
+/* Respect the OS "reduce motion" setting: kill decorative animation and
+   collapse transitions. The globe's JS auto-spin is disabled separately
+   in app.js (spinOn defaults to off under reduced motion). */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:0.001ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:0.001ms!important;
+    scroll-behavior:auto!important;
+  }
+}

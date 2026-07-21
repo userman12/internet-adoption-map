@@ -548,7 +548,8 @@ const CTRY_YEARS=new Set(EVENTS.filter(e=>e.iso).map(e=>e.y));
 let speedMult=1;
 function stepDelay(y){return (CTRY_YEARS.has(y)?1600:950)/speedMult;}
 function pausePlay(){playing=false;clearTimeout(timer);
-  d3.select("#play").html("▶").attr("title",(year!=null&&year<END)?"Resume":"Play 1990–2024");}
+  d3.select("#play").html("▶").attr("title",(year!=null&&year<END)?"Resume":"Play 1990–2024");
+  reflectAria();}
 function tickPlay(){
   if(!playing)return;
   if(year>=END){pausePlay();return;}
@@ -559,7 +560,7 @@ d3.select("#play").on("click",()=>{
   if(playing){pausePlay();return;}
   const fresh=(year==null||year>=END);
   if(year==null)enterTimelapse();
-  playing=true;d3.select("#play").html("❚❚").attr("title","Pause");
+  playing=true;d3.select("#play").html("❚❚").attr("title","Pause");reflectAria();
   if(fresh){setYear(START,false);timer=setTimeout(tickPlay,stepDelay(START));}
   else timer=setTimeout(tickPlay,300);
 });
@@ -733,7 +734,10 @@ d3.select("#cleanbtn").on("click",function(){
   const on=!app.classed("clean");app.classed("clean",on);
   this.textContent=on?"Show UI":"Hide UI";
 });
-let autorotate=false,spinning=false,dragging=false,spinOn=true;
+// respect prefers-reduced-motion: the globe does not auto-spin on load for
+// users who asked the OS to reduce motion (they can still drag to spin).
+const REDUCE_MOTION=matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+let autorotate=false,spinning=false,dragging=false,spinOn=!REDUCE_MOTION;
 function setSpin(on){
   spinOn=on;
   // always the rotation glyph (never a media play/pause, so it can't be mistaken
@@ -849,8 +853,17 @@ addEventListener("resize",()=>{if(loaded)fit();resetZoom();updateTlPos();});
    only non-default values are written, keeping short URLs short.
    params: v=view l=layer m=race h=highlight cab=cables
            ax/ay=scatter axes y=year c=country panel                     */
+// mirror the `.on` selected/toggled state into aria-pressed for every
+// segmented and toggle control, so screen readers announce the active choice.
+function reflectAria(){
+  document.querySelectorAll("#viewseg button,#layerseg button,#thresh button,.btn[data-h],#cablesbtn,#spinbtn")
+    .forEach(b=>b.setAttribute("aria-pressed",b.classList.contains("on")?"true":"false"));
+  const play=document.getElementById("play");
+  if(play)play.setAttribute("aria-pressed",playing?"true":"false");
+}
 let _urlTimer=null;
 function syncURL(){
+  reflectAria();
   clearTimeout(_urlTimer);
   _urlTimer=setTimeout(()=>{
     const p=new URLSearchParams();
