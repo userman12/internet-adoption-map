@@ -299,6 +299,7 @@ d3.select("#cablesbtn").on("click",function(){
   d3.select(this).classed("on",cablesOn);
   gCab.style("display",cablesOn?null:"none");
   if(cablesOn){redraw();updateCables();}
+  syncURL();
 });
 
 /* ── timelapse: year state, events, timeline ───────────────────── */
@@ -353,6 +354,7 @@ function setYear(y,anim){
   const wv=WORLD&&year>=WORLD.sy?WORLD.v[Math.min(year,END)-WORLD.sy]:null;
   d3.select("#yworld").text(wv!=null?` · world ${Math.round(wv)}% online`:"");
   updateEvents();updateCursor();updateCables();paint(anim);
+  syncURL();
 }
 
 /* ── scatter view: Gapminder-style, animated over the same timelapse year ── */
@@ -501,8 +503,8 @@ function renderScatter(anim){
     .text(d=>DATA[d.iso]?DATA[d.iso].name:d.iso)
     .style("opacity",d=>highlight&&!inHi(d.iso)?.15:1);
 }
-d3.select("#xaxis").on("change",function(){scX=this.value;renderScatter(true);});
-d3.select("#yaxis").on("change",function(){scY=this.value;renderScatter(true);});
+d3.select("#xaxis").on("change",function(){scX=this.value;renderScatter(true);syncURL();});
+d3.select("#yaxis").on("change",function(){scY=this.value;renderScatter(true);syncURL();});
 populateAxisSelects();
 
 function fitFilters(){
@@ -540,6 +542,7 @@ function exitTimelapse(){
   d3.select("#evcard").classed("show",false);
   gFx.selectAll("circle").remove();
   updateLegend();updateCursor();updateCables();
+  syncURL();
 }
 const CTRY_YEARS=new Set(EVENTS.filter(e=>e.iso).map(e=>e.y));
 let speedMult=1;
@@ -581,11 +584,13 @@ function openPanel(iso){
   app.classed("cp",true);
   d3.select("#cpanel").classed("show",true);
   renderPanel();
+  syncURL();
 }
 function closePanel(){
   panelIso=null;
   app.classed("cp",false);
   d3.select("#cpanel").classed("show",false);
+  syncURL();
 }
 function cpSeries(kind){
   const s=kind==="net"?DATA[panelIso]:(MET[kind]&&MET[kind][panelIso]);
@@ -685,8 +690,7 @@ Promise.all([
   // globe is the default view: kick off the spin and show the drag hint
   if(view==="globe"){setSpin(spinOn);
     d3.select("#hint").classed("show",true);setTimeout(()=>d3.select("#hint").classed("show",false),3200);}
-  const yq=+new URLSearchParams(location.search).get("y");
-  if(yq>=START&&yq<=END){enterTimelapse();setYear(yq,false);pausePlay();}
+  applyURLState();
 }).catch(()=>{d3.select("#app").append("div").style("position","absolute").style("top","50%")
    .style("left","0").style("width","100%").style("text-align","center").style("color","#9aa4b2")
    .html("Map geometry could not load (offline?). Data is intact — reconnect and reload.");});
@@ -726,6 +730,7 @@ d3.selectAll("#viewseg button").on("click",function(){
   d3.select("#spinbtn").style("display",view==="globe"?null:"none");
   if(view==="globe"){d3.select("#hint").classed("show",true);setTimeout(()=>d3.select("#hint").classed("show",false),3200);
     setSpin(spinOn);}else{autorotate=false;}
+  syncURL();
 });
 d3.select("#spinbtn").on("click",()=>setSpin(!spinOn));
 function startSpin(){if(spinning)return;spinning=true;let last=0;
@@ -787,19 +792,71 @@ d3.selectAll("#layerseg button").on("click",function(){
   d3.select(".foot").html(FOOT[layer]||
     "Source: OWID/ITU · World Bank (2025)<br/>Fixed borders · latest value where series ends");
   buildLabels();buildRank();redraw();paint(true);updateTlPos();
+  syncURL();
 });
 d3.selectAll("#thresh button").on("click",function(){
   d3.selectAll("#thresh button").classed("on",false);d3.select(this).classed("on",true);
   mode=this.dataset.m;d3.select("#ythr").text(mode==="g50"?"50":"40");
   buildLabels();buildRank();redraw();paint(true);
   if(year!=null)setYear(year,false);
-  if(panelIso)renderPanel();});
+  if(panelIso)renderPanel();syncURL();});
 d3.selectAll(".btn[data-h]").on("click",function(){
   const h=this.dataset.h;highlight=(highlight===h)?null:h;
   d3.selectAll(".btn[data-h]").classed("on",false);if(highlight)d3.select(this).classed("on",true);
   if(year!=null)exitTimelapse();
-  buildLabels();buildRank();redraw();paint(true);});
+  buildLabels();buildRank();redraw();paint(true);syncURL();});
 d3.select("#reset").on("click",()=>{highlight=null;exitTimelapse();closePanel();resetZoom();
   d3.selectAll(".btn[data-h]").classed("on",false);
-  buildLabels();buildRank();redraw();paint(true);});
+  buildLabels();buildRank();redraw();paint(true);syncURL();});
 addEventListener("resize",()=>{if(loaded)fit();resetZoom();updateTlPos();});
+
+/* ── shareable URL state ──────────────────────────────────────────────
+   every meaningful control writes itself into the query string, and the
+   query string is replayed on load — so any interesting view is a link.
+   only non-default values are written, keeping short URLs short.
+   params: v=view l=layer m=race h=highlight cab=cables
+           ax/ay=scatter axes y=year c=country panel                     */
+let _urlTimer=null;
+function syncURL(){
+  clearTimeout(_urlTimer);
+  _urlTimer=setTimeout(()=>{
+    const p=new URLSearchParams();
+    if(view!=="globe")p.set("v",view);
+    if(layer!=="speed")p.set("l",layer);
+    if(mode!=="g50")p.set("m",mode);
+    if(highlight)p.set("h",highlight);
+    if(cablesOn)p.set("cab","1");
+    if(view==="scatter"){
+      if(scX!=="gdp")p.set("ax",scX);
+      if(scY!=="net")p.set("ay",scY);
+    }
+    if(year!=null)p.set("y",year);
+    if(panelIso)p.set("c",panelIso);
+    const qs=p.toString();
+    history.replaceState(null,"",qs?"?"+qs:location.pathname);
+  },250);
+}
+// replay ?params once on boot — runs after geometry is ready and every
+// control handler is bound, so it just drives the real handlers.
+function applyURLState(){
+  const p=new URLSearchParams(location.search);
+  const ax=p.get("ax"),ay=p.get("ay");
+  if(ax&&AXES[ax]){scX=ax;d3.select("#xaxis").property("value",ax);}
+  if(ay&&AXES[ay]){scY=ay;d3.select("#yaxis").property("value",ay);}
+  const seg=(sel,attr,val)=>{if(!val)return;
+    const b=document.querySelector(`${sel} button[data-${attr}="${val}"]`);
+    if(b&&!b.classList.contains("on"))b.click();};
+  seg("#layerseg","l",p.get("l"));
+  seg("#thresh","m",p.get("m"));
+  const h=p.get("h");
+  if(h){const hb=document.querySelector(`.btn[data-h="${h}"]`);
+    if(hb&&!hb.classList.contains("on"))hb.click();}
+  if(p.get("cab")==="1"){const cb=document.getElementById("cablesbtn");
+    if(cb&&!cb.classList.contains("on"))cb.click();}
+  seg("#viewseg","v",p.get("v"));   // last: scatter/flat chrome reads the layer set above
+  const yq=+p.get("y");
+  if(yq>=START&&yq<=END){enterTimelapse();setYear(yq,false);pausePlay();}
+  const c=p.get("c");
+  if(c&&DATA[c])openPanel(c);
+  syncURL();
+}
