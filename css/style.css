@@ -75,8 +75,7 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:30px;line-height
   display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1}
 /* rotation toggle: a spinning glyph while active makes it read as "globe rotation",
    not a second play/pause twin of the timelapse button beside it */
-.spinbtn{font-size:17px}
-.spinbtn .spinico{display:inline-block;line-height:1}
+.spinbtn .spinico{display:block;transform-origin:50% 50%}
 .spinbtn.on .spinico{animation:spinico 3.6s linear infinite}
 @keyframes spinico{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.spinbtn.on .spinico{animation:none}}
@@ -205,6 +204,7 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:30px;line-height
 .cpanel.show{display:block}
 #app.tl .cpanel{top:150px}
 #app.cp .ev{opacity:0 !important;pointer-events:none !important}
+#app.clean.sc .ev{opacity:0 !important;pointer-events:none !important}
 .cpx{position:absolute;top:8px;right:10px;background:none;border:0;color:var(--muted);
   font:inherit;font-size:17px;line-height:1;cursor:pointer;padding:4px}
 .cpx:hover{color:var(--ink)}
@@ -255,8 +255,11 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:30px;line-height
 .cmpchips:not(:empty)+.cmphint{display:none}
 .cmpchips:empty+.cmphint{margin-top:0}
 #cmpchart{display:block;width:300px;height:176px;margin-top:2px}
-.cmpread{font-size:11px;color:var(--muted);margin-top:7px;font-variant-numeric:tabular-nums;min-height:14px}
-.cmpread .cr{font-weight:600}
+.cmpread{font-size:11px;color:var(--muted);margin-top:9px;padding-top:8px;border-top:1px solid var(--line);
+  font-variant-numeric:tabular-nums;line-height:1.6}
+.cmpread b{color:var(--ink)}
+.cmpread .cr{font-weight:600;color:var(--ink);display:inline-flex;align-items:center;gap:4px}
+.cmpread .cr i{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block}
 
 #cleanbtn{position:absolute;top:22px;right:24px;z-index:30;background:rgba(22,27,34,.7);border:1px solid var(--line);
   color:var(--muted);border-radius:8px;padding:7px 11px;font:inherit;font-size:11.5px;font-weight:500;cursor:pointer;

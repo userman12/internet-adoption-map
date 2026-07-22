@@ -533,9 +533,7 @@ function fitFilters(){
 }
 function updateTlPos(){
   fitFilters();
-  // the timeline hugs whichever bottom-left panel is visible for the mode
-  const anchor=appMode==="compare"?"cmppanel":"filters";
-  const f=document.getElementById(anchor).getBoundingClientRect();
+  const f=document.getElementById("filters").getBoundingClientRect();
   const tl=document.getElementById("tlrow");
   tl.style.left=f.left+"px";
   tl.style.width=f.width+"px";
@@ -745,17 +743,31 @@ function renderCompare(){
   seriesAll.forEach((s,i)=>{if(!s.length)return;
     svgC.append("path").attr("d",line(s)).attr("fill","none")
       .attr("stroke",CMP_COLORS[i]).attr("stroke-width",2).attr("stroke-linejoin","round");});
+  svgC.append("line").attr("id","cmphover").attr("y1",CMPM.t).attr("y2",CMPH-CMPM.b)
+    .attr("stroke","#5c6572").attr("stroke-width",1).attr("display","none");
+  svgC.append("rect").attr("x",CMPM.l).attr("y",CMPM.t)
+    .attr("width",CMPW-CMPM.l-CMPM.r).attr("height",CMPH-CMPM.t-CMPM.b)
+    .attr("fill","transparent")
+    .on("mousemove",function(ev){
+      const yr=Math.max(START,Math.min(END,Math.round(cmpX.invert(d3.pointer(ev,this)[0]))));
+      d3.select("#cmphover").attr("display",null).attr("x1",cmpX(yr)).attr("x2",cmpX(yr));
+      d3.select("#cmpread").html(cmpReadoutHtml(yr));})
+    .on("mouseleave",()=>{d3.select("#cmphover").attr("display","none");updateCmpCursor();});
   updateCmpCursor();
+}
+function cmpReadoutHtml(yr){
+  const u=cmpUnit();
+  const rows=cmpSet.map((iso,i)=>({iso,i,v:metValueAt(cmpMetric,iso,yr)}))
+    .sort((a,b)=>(b.v==null?-1:b.v)-(a.v==null?-1:a.v));
+  return `<b>${yr}</b> · `+rows.map(r=>
+    `<span class="cr"><i style="background:${CMP_COLORS[r.i]}"></i>${DATA[r.iso].name} ${r.v!=null?r.v+u:"—"}</span>`).join(" · ");
 }
 function updateCmpCursor(){
   if(appMode!=="compare"||!cmpX||!cmpSet.length){return;}
-  const yr=year!=null?year:END,u=cmpUnit();
+  const yr=year!=null?year:END;
   d3.select("#cmpcursor").attr("display",year!=null?null:"none");
   if(year!=null)d3.select("#cmpcursor").attr("x1",cmpX(yr)).attr("x2",cmpX(yr));
-  const rows=cmpSet.map((iso,i)=>({iso,i,v:metValueAt(cmpMetric,iso,yr)}))
-    .sort((a,b)=>(b.v==null?-1:b.v)-(a.v==null?-1:a.v));
-  d3.select("#cmpread").html(`<b>${yr}</b> · `+rows.map(r=>
-    `<span class="cr"><i style="background:${CMP_COLORS[r.i]}"></i>${DATA[r.iso].name} ${r.v!=null?r.v+u:"—"}</span>`).join(""));
+  d3.select("#cmpread").html(cmpReadoutHtml(yr));
 }
 d3.selectAll("#modeswitch button").on("click",function(){
   const m=this.dataset.mode;if(m===appMode)return;
@@ -845,6 +857,7 @@ d3.selectAll("#viewseg button").on("click",function(){
   d3.selectAll("#viewseg button").classed("on",false);d3.select(this).classed("on",true);
   view=v;
   const isScatter=view==="scatter";
+  app.classed("sc",isScatter);
   svg.style("display",isScatter?"none":null);
   scatterSvg.style("display",isScatter?null:"none");
   d3.select("#datagrp").style("display",isScatter?"none":null);
