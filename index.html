@@ -28,6 +28,26 @@
   <div class="scrim b ov"></div>
   <button id="cleanbtn">Hide UI</button>
 
+  <div class="modeswitch ov" id="modeswitch" role="group" aria-label="App mode">
+    <button data-mode="explore" class="on" aria-pressed="true">Explore</button>
+    <button data-mode="compare" aria-pressed="false">Compare</button>
+  </div>
+
+  <div class="cmppanel ov" id="cmppanel">
+    <div class="cmphd"><span class="gl">Compare</span>
+      <select id="cmpmetric" class="axsel" aria-label="Metric to compare">
+        <option value="net">% online</option>
+        <option value="mobile">Mobile</option>
+        <option value="bband">Broadband</option>
+      </select>
+      <button class="btn" id="cmpclear">Clear</button>
+    </div>
+    <div class="cmpchips" id="cmpchips"></div>
+    <div class="cmphint" id="cmphint">Click countries on the map to add (2–4).</div>
+    <svg id="cmpchart" width="300" height="176" role="img" aria-label="Overlaid country curves"></svg>
+    <div class="cmpread" id="cmpread"></div>
+  </div>
+
   <div class="hd ov">
     <div class="kicker">30 years of the internet · 1990–2024</div>
     <h1>The race to half online</h1>

@@ -87,6 +87,10 @@ const gGrat=viewport.append("path").attr("class","graticule");
 const gGeo=viewport.append("g"),gCab=viewport.append("g").attr("id","cablelayer"),
   gDot=viewport.append("g"),gLbl=viewport.append("g"),gFx=viewport.append("g");
 let cablesOn=false;const cableTimers=new Map();
+// Compare mode: a small selected set of countries whose metric curves are
+// overlaid. Distinct from the Explore "highlight" sets. Max 4.
+let appMode="explore",cmpSet=[],cmpMetric="net",cmpX=null,cmpY=null;
+const CMP_COLORS=["#17b8a6","#e6b34a","#7aa2ff","#f2789f"];
 const CABLE_END=Math.max(...(window.CABLES||[{rfs:0}]).map(c=>c.rfs));
 
 function feats(){return view==="flat"?feats50:feats110;}
@@ -128,7 +132,12 @@ function colorOf(iso){
   if(layer==="speed")return baseColor(iso);
   const v=metValueAt(layer,iso,END);
   return v==null?NODATA:SCALES[layer](v);}
-function inHi(iso){if(!highlight)return true;
+// map dimming/highlight is "active" either from an Explore highlight set or
+// from a Compare selection — both light up a subset and dim the rest.
+function hiActive(){return highlight!=null||(appMode==="compare"&&cmpSet.length>0);}
+function inHi(iso){
+  if(appMode==="compare"&&cmpSet.length)return cmpSet.includes(iso);
+  if(!highlight)return true;
   if(highlight==="never"){const d=DATA[iso];return d&&!d.reached50&&d.y10!=null;}
   return SETS[highlight].has(iso);}
 
@@ -137,7 +146,8 @@ function bindGeo(){
   gGeo.selectAll("path.land").data(feats(),d=>d.id).join(
     en=>en.append("path").attr("class","land")
         .on("mousemove",(e,d)=>{enterFeat(d);move(e);}).on("mouseleave",leave)
-        .on("click",(e,d)=>{if(d.__iso&&DATA[d.__iso])openPanel(d.__iso);}),
+        .on("click",(e,d)=>{if(!d.__iso||!DATA[d.__iso])return;
+          if(appMode==="compare")toggleCmp(d.__iso);else openPanel(d.__iso);}),
     up=>up,ex=>ex.remove());
 }
 function fit(){
@@ -169,7 +179,7 @@ function redraw(){
   });
 }
 function styleGeo(sel,tf){
-  if(!highlight){sel.attr("stroke","#0e1116").attr("stroke-width",.4).attr("opacity",1);return;}
+  if(!hiActive()){sel.attr("stroke","#0e1116").attr("stroke-width",.4).attr("opacity",1);return;}
   sel.attr("opacity",d=>tf(d)?1:.05)
      .attr("stroke",d=>tf(d)?"#ffffff":"#0e1116").attr("stroke-width",d=>tf(d)?1.2:.3);
   sel.filter(tf).raise();
@@ -181,16 +191,17 @@ function paint(anim){
   styleGeo(L,d=>inHi(d.__iso));
   const D=gDot.selectAll("circle");
   (anim?D.transition().duration(420):D).attr("fill",d=>colorOf(d))
-    .attr("r",d=>(highlight&&inHi(d))?6:4.2);
-  D.attr("opacity",d=>{if(!DATA[d])return .001;return highlight?(inHi(d)?1:.05):1;})
-   .attr("stroke",d=>(highlight&&inHi(d))?"#fff":"#0e1116").attr("stroke-width",d=>(highlight&&inHi(d))?1.4:.6);
-  D.filter(d=>highlight&&inHi(d)).raise();
+    .attr("r",d=>(hiActive()&&inHi(d))?6:4.2);
+  D.attr("opacity",d=>{if(!DATA[d])return .001;return hiActive()?(inHi(d)?1:.05):1;})
+   .attr("stroke",d=>(hiActive()&&inHi(d))?"#fff":"#0e1116").attr("stroke-width",d=>(hiActive()&&inHi(d))?1.4:.6);
+  D.filter(d=>hiActive()&&inHi(d)).raise();
 }
 
 /* ── labels, rank panel, legends ───────────────────────────────── */
 function labelPt(iso){return DOTS[iso]||centroid[iso]||[0,0];}
 function buildLabels(){
-  const list=(highlight&&highlight!=="never")?[...SETS[highlight]]:[];
+  const list=(appMode==="compare")?cmpSet.slice()
+    :((highlight&&highlight!=="never")?[...SETS[highlight]]:[]);
   gLbl.selectAll("text").data(list,d=>d).join(
     en=>{const t=en.append("text").attr("class","lbl");t.append("tspan");t.append("tspan").attr("class","v");return t;},
     up=>up, ex=>ex.remove())
@@ -522,7 +533,9 @@ function fitFilters(){
 }
 function updateTlPos(){
   fitFilters();
-  const f=document.getElementById("filters").getBoundingClientRect();
+  // the timeline hugs whichever bottom-left panel is visible for the mode
+  const anchor=appMode==="compare"?"cmppanel":"filters";
+  const f=document.getElementById(anchor).getBoundingClientRect();
   const tl=document.getElementById("tlrow");
   tl.style.left=f.left+"px";
   tl.style.width=f.width+"px";
@@ -666,11 +679,91 @@ function renderPanel(){
   updateCursor();
 }
 function updateCursor(){
+  if(appMode==="compare")updateCmpCursor();
   if(!panelIso||!cpX)return;
   d3.select("#cpcursor").attr("display",year!=null?null:"none");
   if(year!=null)d3.select("#cpcursor").attr("x1",cpX(year)).attr("x2",cpX(year));
 }
 d3.select("#cpx").on("click",closePanel);
+
+/* ── Compare mode ──────────────────────────────────────────────────────
+   pick 2–4 countries (click them on the map), overlay one metric's curve
+   for each, and read a head-to-head that follows the timelapse cursor.
+   Reuses metValueAt for the series and the highlight machinery for the map. */
+const CMPW=300,CMPH=176,CMPM={l:34,r:12,t:12,b:22};
+function cmpSeries(iso){const a=[];
+  for(let yv=START;yv<=END;yv++){const v=metValueAt(cmpMetric,iso,yv);if(v!=null)a.push({yr:yv,v});}
+  return a;}
+function cmpUnit(){return cmpMetric==="mobile"?"":"%";}
+function toggleCmp(iso){
+  const i=cmpSet.indexOf(iso);
+  if(i>=0)cmpSet.splice(i,1);
+  else{if(cmpSet.length>=4)return;cmpSet.push(iso);}
+  buildLabels();buildRank();redraw();paint(true);renderCompare();syncURL();
+}
+function setAppMode(m){
+  if(m===appMode)return;
+  appMode=m;
+  const compare=m==="compare";
+  app.classed("cmp",compare);
+  if(compare)closePanel();
+  buildLabels();buildRank();redraw();paint(true);
+  if(compare)renderCompare();
+  updateTlPos();syncURL();
+}
+function renderCompare(){
+  // chips
+  const chips=d3.select("#cmpchips").selectAll("span.chip").data(cmpSet,d=>d);
+  chips.exit().remove();
+  const en=chips.enter().append("span").attr("class","chip");
+  en.append("i").attr("class","cdot");en.append("b");
+  en.append("button").attr("class","cxr").attr("aria-label","Remove")
+    .text("×").on("click",(e,iso)=>{e.stopPropagation();toggleCmp(iso);});
+  d3.select("#cmpchips").selectAll("span.chip")
+    .each(function(iso,i){d3.select(this).select(".cdot").style("background",CMP_COLORS[i]);
+      d3.select(this).select("b").text(DATA[iso]?DATA[iso].name:iso);});
+  d3.select("#cmphint").style("display",cmpSet.length<2?null:"none");
+  // chart
+  const svgC=d3.select("#cmpchart");svgC.selectAll("*").remove();
+  if(!cmpSet.length){cmpX=null;d3.select("#cmpread").html("");return;}
+  const seriesAll=cmpSet.map(cmpSeries),flat=seriesAll.flat();
+  const base=(cmpMetric==="net"||cmpMetric==="bband")?100:1;
+  const ymax=Math.max(base,...flat.map(p=>p.v));
+  cmpX=d3.scaleLinear().domain([START,END]).range([CMPM.l,CMPW-CMPM.r]);
+  cmpY=d3.scaleLinear().domain([0,ymax]).range([CMPH-CMPM.b,CMPM.t]);
+  const yt=ymax>150?[0,100,200]:(ymax>100?[0,50,100,150]:(base===1?[0,ymax/2,ymax]:[0,50,100]));
+  const gAx=svgC.append("g");
+  yt.forEach(v=>{if(v>ymax)return;
+    gAx.append("line").attr("x1",CMPM.l).attr("x2",CMPW-CMPM.r).attr("y1",cmpY(v)).attr("y2",cmpY(v)).attr("class","cpgrid");
+    gAx.append("text").attr("x",CMPM.l-5).attr("y",cmpY(v)+3).attr("class","cpaxis").attr("text-anchor","end")
+      .text(Math.round(v));});
+  [1990,2005,2024].forEach(v=>gAx.append("text").attr("x",cmpX(v)).attr("y",CMPH-4).attr("class","cpaxis")
+    .attr("text-anchor",v===START?"start":v===END?"end":"middle").text(v));
+  svgC.append("line").attr("id","cmpcursor").attr("y1",CMPM.t).attr("y2",CMPH-CMPM.b)
+    .attr("stroke","#17b8a6").attr("stroke-width",1).attr("stroke-dasharray","2 2").attr("display","none");
+  const line=d3.line().x(p=>cmpX(p.yr)).y(p=>cmpY(p.v));
+  seriesAll.forEach((s,i)=>{if(!s.length)return;
+    svgC.append("path").attr("d",line(s)).attr("fill","none")
+      .attr("stroke",CMP_COLORS[i]).attr("stroke-width",2).attr("stroke-linejoin","round");});
+  updateCmpCursor();
+}
+function updateCmpCursor(){
+  if(appMode!=="compare"||!cmpX||!cmpSet.length){return;}
+  const yr=year!=null?year:END,u=cmpUnit();
+  d3.select("#cmpcursor").attr("display",year!=null?null:"none");
+  if(year!=null)d3.select("#cmpcursor").attr("x1",cmpX(yr)).attr("x2",cmpX(yr));
+  const rows=cmpSet.map((iso,i)=>({iso,i,v:metValueAt(cmpMetric,iso,yr)}))
+    .sort((a,b)=>(b.v==null?-1:b.v)-(a.v==null?-1:a.v));
+  d3.select("#cmpread").html(`<b>${yr}</b> · `+rows.map(r=>
+    `<span class="cr"><i style="background:${CMP_COLORS[r.i]}"></i>${DATA[r.iso].name} ${r.v!=null?r.v+u:"—"}</span>`).join(""));
+}
+d3.selectAll("#modeswitch button").on("click",function(){
+  const m=this.dataset.mode;if(m===appMode)return;
+  d3.selectAll("#modeswitch button").classed("on",false);d3.select(this).classed("on",true);
+  setAppMode(m);
+});
+d3.select("#cmpmetric").on("change",function(){cmpMetric=this.value;renderCompare();syncURL();});
+d3.select("#cmpclear").on("click",()=>{cmpSet=[];buildLabels();buildRank();redraw();paint(true);renderCompare();syncURL();});
 
 /* ── keyboard shortcuts ────────────────────────────────────────────────
    ←/→ step year · space play/pause · 1-9,0 pick layer · F/G/S switch view
@@ -856,7 +949,7 @@ addEventListener("resize",()=>{if(loaded)fit();resetZoom();updateTlPos();});
 // mirror the `.on` selected/toggled state into aria-pressed for every
 // segmented and toggle control, so screen readers announce the active choice.
 function reflectAria(){
-  document.querySelectorAll("#viewseg button,#layerseg button,#thresh button,.btn[data-h],#cablesbtn,#spinbtn")
+  document.querySelectorAll("#modeswitch button,#viewseg button,#layerseg button,#thresh button,.btn[data-h],#cablesbtn,#spinbtn")
     .forEach(b=>b.setAttribute("aria-pressed",b.classList.contains("on")?"true":"false"));
   const play=document.getElementById("play");
   if(play)play.setAttribute("aria-pressed",playing?"true":"false");
@@ -877,7 +970,11 @@ function syncURL(){
       if(scY!=="net")p.set("ay",scY);
     }
     if(year!=null)p.set("y",year);
-    if(panelIso)p.set("c",panelIso);
+    if(appMode!=="explore")p.set("mode",appMode);
+    if(appMode==="compare"){
+      if(cmpSet.length)p.set("c",cmpSet.join(","));
+      if(cmpMetric!=="net")p.set("cm",cmpMetric);
+    }else if(panelIso)p.set("c",panelIso);
     const qs=p.toString();
     history.replaceState(null,"",qs?"?"+qs:location.pathname);
   },250);
@@ -902,7 +999,15 @@ function applyURLState(){
   seg("#viewseg","v",p.get("v"));   // last: scatter/flat chrome reads the layer set above
   const yq=+p.get("y");
   if(yq>=START&&yq<=END){enterTimelapse();setYear(yq,false);pausePlay();}
-  const c=p.get("c");
-  if(c&&DATA[c])openPanel(c);
+  if(p.get("mode")==="compare"){
+    const cm=p.get("cm");
+    if(cm&&["net","mobile","bband"].includes(cm)){cmpMetric=cm;d3.select("#cmpmetric").property("value",cm);}
+    cmpSet=(p.get("c")||"").split(",").filter(x=>DATA[x]).slice(0,4);
+    const mb=document.querySelector('#modeswitch button[data-mode="compare"]');
+    if(mb)mb.click();
+  }else{
+    const c=p.get("c");
+    if(c&&DATA[c])openPanel(c);
+  }
   syncURL();
 }
