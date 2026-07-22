@@ -37,6 +37,14 @@ svg.globe{cursor:grab} svg.globe.grab{cursor:grabbing}
 /* below this width the centred axis title can collide with the side panels;
    the axis dropdowns already state the same thing, so just drop it */
 @media(max-width:1300px){#scatter .sc-lbl{display:none}}
+
+/* ── bar chart race view ──────────────────────────────────────── */
+.rc-row{cursor:pointer}
+.rc-bar{transition:fill-opacity .2s}
+.rc-row:hover .rc-bar{fill-opacity:.85}
+.rc-lbl{fill:var(--ink);font-size:12.5px;font-weight:600}
+.rc-val{fill:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}
+.rc-year{fill:var(--muted);font-size:12px;font-weight:600;letter-spacing:.02em}
 .cable.laid{stroke-opacity:.38;stroke-width:1px}
 .cable.laid:hover{stroke-opacity:.9;stroke-width:1.6px}
 .cable.fresh{stroke-opacity:.95;stroke-width:1.8px;filter:drop-shadow(0 0 3px rgba(91,156,232,.85))}

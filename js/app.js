@@ -70,6 +70,7 @@ let feats50=[],feats110=[],loaded=false,centroid={};
 
 const svg=d3.select("#map"),tip=d3.select("#tip"),app=d3.select("#app");
 const scatterSvg=d3.select("#scatter");
+const raceSvg=d3.select("#race");
 let W=innerWidth,H=innerHeight;
 const projFlat=d3.geoNaturalEarth1();
 const projGlobe=d3.geoOrthographic().rotate([-12,-18]).clipAngle(90);
@@ -153,6 +154,7 @@ function bindGeo(){
 function fit(){
   W=innerWidth;H=innerHeight;
   if(view==="scatter"){fitScatter();return;}
+  if(view==="race"){fitRace();return;}
   if(view==="flat"){proj=projFlat;proj.fitExtent([[12,92],[W-12,H-84]],{type:"Sphere"});
     sphere.attr("fill","#0e1116");svg.classed("globe",false);}
   else{proj=projGlobe;const R=Math.min(W-40,H-150);
@@ -186,6 +188,7 @@ function styleGeo(sel,tf){
 }
 function paint(anim){
   if(view==="scatter"){renderScatter(anim);return;}
+  if(view==="race"){renderRace(anim);return;}
   const L=gGeo.selectAll("path.land");
   (anim?L.transition().duration(420):L).attr("fill",d=>colorOf(d.__iso));
   styleGeo(L,d=>inHi(d.__iso));
@@ -211,8 +214,8 @@ function buildLabels(){
       ts.filter((_,i)=>i===1).text(g!=null?g+"y":"");});
 }
 function updateLegend(){
-  d3.select("#reglegend").style("display",view==="scatter"?"block":"none");
-  if(view==="scatter"){d3.select("#legend").style("display","none");
+  d3.select("#reglegend").style("display",(view==="scatter"||view==="race")?"block":"none");
+  if(view==="scatter"||view==="race"){d3.select("#legend").style("display","none");
     d3.select("#legend2").style("display","none");d3.select("#rank").classed("show",false);return;}
   const rankOn=!!highlight,tl=app.classed("tl");
   const mag=tl?(layer==="speed"?"net":layer):(layer!=="speed"?layer:null);
@@ -417,6 +420,10 @@ const scYLbl=scatterSvg.append("text").attr("class","sc-lbl").attr("text-anchor"
 const scCountTxt=scatterSvg.append("text").attr("class","sc-count");
 let scXscale=d3.scaleLinear(),scYscale=d3.scaleLinear(),scPopScale=d3.scaleSqrt().range([3.5,34]);
 const LABEL_N=12; // biggest-by-population countries get a direct label
+const rcMargin={top:230,right:90,bottom:50,left:210};
+const rcBarsG=raceSvg.append("g").attr("class","rc-bars");
+const rcYearTxt=raceSvg.append("text").attr("class","rc-year").attr("text-anchor","end");
+const RACE_N=12;
 
 function populateAxisSelects(){
   const opts=AXIS_ORDER.map(k=>`<option value="${k}">${AXES[k].short}</option>`).join("");
@@ -513,6 +520,42 @@ function renderScatter(anim){
   lt.attr("x",d=>scXscale(d.x)).attr("y",d=>scYscale(d.y)-radius(d)-6)
     .text(d=>DATA[d.iso]?DATA[d.iso].name:d.iso)
     .style("opacity",d=>highlight&&!inHi(d.iso)?.15:1);
+}
+function fitRace(){
+  raceSvg.attr("viewBox",`0 0 ${W} ${H}`);
+  rcYearTxt.attr("x",W-rcMargin.right).attr("y",rcMargin.top-16);
+  renderRace(false);
+}
+function renderRace(anim){
+  if(view!=="race")return;
+  const yr=year!=null?year:END;
+  const mag=layer==="speed"?"net":layer;
+  const L=LAYERS[mag];
+  const rows=Object.keys(DATA).map(iso=>({iso,region:REG[iso],v:metValueAt(mag,iso,yr)}))
+    .filter(d=>d.v!=null).sort((a,b)=>b.v-a.v).slice(0,RACE_N);
+  const rowH=(H-rcMargin.top-rcMargin.bottom)/RACE_N;
+  const barH=rowH*.62;
+  const xScale=d3.scaleLinear().domain([0,d3.max(rows,d=>d.v)||1]).range([rcMargin.left,W-rcMargin.right]);
+  rcYearTxt.text(`${L.row} · Top ${rows.length} · ${yr}`);
+  const sel=rcBarsG.selectAll("g.rc-row").data(rows,d=>d.iso);
+  sel.exit().transition().duration(260).style("opacity",0).remove();
+  const en=sel.enter().append("g").attr("class","rc-row")
+    .attr("transform",(d,i)=>`translate(0,${rcMargin.top+i*rowH})`).style("opacity",0)
+    .on("click",(e,d)=>openPanel(d.iso));
+  en.append("rect").attr("class","rc-bar").attr("y",(rowH-barH)/2).attr("height",barH).attr("width",0);
+  en.append("text").attr("class","rc-lbl").attr("text-anchor","end");
+  en.append("text").attr("class","rc-val").attr("x",d=>xScale(d.v)+10);
+  const merged=en.merge(sel);
+  const t=anim?merged.transition().duration(420):merged;
+  t.attr("transform",(d,i)=>`translate(0,${rcMargin.top+i*rowH})`).style("opacity",d=>highlight&&!inHi(d.iso)?.3:1);
+  merged.select(".rc-lbl").attr("x",xScale(0)-10).attr("y",rowH/2).attr("dy",".33em")
+    .text(d=>DATA[d.iso]?DATA[d.iso].name:d.iso);
+  const tb=anim?merged.select(".rc-bar").transition().duration(420):merged.select(".rc-bar");
+  tb.attr("x",xScale(0)).attr("y",(rowH-barH)/2).attr("height",barH)
+    .attr("width",d=>Math.max(0,xScale(d.v)-xScale(0)))
+    .attr("fill",d=>highlight&&inHi(d.iso)?HI_COLOR[highlight]:(REGION_COLOR[d.region]||REGION_NONE));
+  const tv=anim?merged.select(".rc-val").transition().duration(420):merged.select(".rc-val");
+  tv.attr("x",d=>xScale(d.v)+10).attr("y",rowH/2).attr("dy",".33em").text(d=>L.fmt(d.v));
 }
 d3.select("#xaxis").on("change",function(){scX=this.value;renderScatter(true);syncURL();});
 d3.select("#yaxis").on("change",function(){scY=this.value;renderScatter(true);syncURL();});
@@ -803,6 +846,7 @@ addEventListener("keydown",e=>{
     case "f":case "F":pickView("flat");return;
     case "g":case "G":pickView("globe");return;
     case "s":case "S":pickView("scatter");return;
+    case "r":case "R":pickView("race");return;
   }
   if(/^[0-9]$/.test(e.key)&&view!=="scatter"){
     const idx=e.key==="0"?9:(+e.key-1);
@@ -856,18 +900,19 @@ d3.selectAll("#viewseg button").on("click",function(){
   const v=this.dataset.v;if(v===view)return;
   d3.selectAll("#viewseg button").classed("on",false);d3.select(this).classed("on",true);
   view=v;
-  const isScatter=view==="scatter";
-  app.classed("sc",isScatter);
-  svg.style("display",isScatter?"none":null);
+  const isScatter=view==="scatter",isRace=view==="race",isAlt=isScatter||isRace;
+  app.classed("sc",isScatter).classed("rc",isRace);
+  svg.style("display",isAlt?"none":null);
   scatterSvg.style("display",isScatter?null:"none");
+  raceSvg.style("display",isRace?null:"none");
   d3.select("#datagrp").style("display",isScatter?"none":null);
   d3.select("#axisgrp").style("display",isScatter?"flex":"none");
-  d3.select("#threshgrp").style("display",isScatter?"none":null);
-  d3.select("#cablegrp").style("display",isScatter?"none":null);
-  d3.select(".zoomctl").style("display",isScatter?"none":null);
-  d3.select("#hirow").classed("dis",!isScatter&&layer!=="speed");
+  d3.select("#threshgrp").style("display",isAlt?"none":null);
+  d3.select("#cablegrp").style("display",isAlt?"none":null);
+  d3.select(".zoomctl").style("display",isAlt?"none":null);
+  d3.select("#hirow").classed("dis",!isAlt&&layer!=="speed");
   d3.select("#hint").classed("show",false);
-  if(!isScatter){bindGeo();}
+  if(!isAlt){bindGeo();}
   fit();resetZoom();
   updateLegend();updateTlPos();
   d3.select("#spinbtn").style("display",view==="globe"?null:"none");
@@ -918,11 +963,11 @@ d3.selectAll("#layerseg button").on("click",function(){
   const l=this.dataset.l;if(l===layer)return;
   d3.selectAll("#layerseg button").classed("on",false);d3.select(this).classed("on",true);
   layer=l;
-  const speedOn=layer==="speed";
+  const speedOn=layer==="speed",altView=view==="scatter"||view==="race";
   // dim rather than hide, so the panel never changes size on layer switch
   d3.select("#threshgrp").classed("dis",!speedOn);
-  d3.select("#hirow").classed("dis",!speedOn);
-  if(!speedOn&&highlight){highlight=null;d3.selectAll(".btn[data-h]").classed("on",false);}
+  d3.select("#hirow").classed("dis",!speedOn&&!altView);
+  if(!speedOn&&highlight&&!altView){highlight=null;d3.selectAll(".btn[data-h]").classed("on",false);}
   const FOOT={
     speed:"Source: Our World in Data / ITU (2025)<br/>Fixed borders · colour = adoption speed",
     price:"Source: Cable.co.uk mobile data pricing (2023)<br/>Fixed borders · brighter = cheaper 1GB",
