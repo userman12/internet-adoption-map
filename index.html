@@ -57,7 +57,7 @@
     <p class="credit">Built with internet by <a href="https://x.com/userluke_" target="_blank" rel="noopener">@userluke_</a> · <a href="https://github.com/userman12/internet-adoption-map" target="_blank" rel="noopener">source on GitHub</a></p>
   </div>
   <div class="year" id="yearbox" role="status" aria-live="polite"><div class="yy" id="yy">1990</div><div class="yc"><b id="ycount">0</b> countries ≥<span id="ythr">50</span>%<span id="yworld"></span></div></div>
-  <div class="foot ov">Source: Our World in Data / ITU (2025)<br/>Fixed borders · colour = adoption speed</div>
+  <div class="foot ov">Source: Our World in Data / ITU (2025)<br/>Fixed borders · colour = adoption speed · <kbd>⌘K</kbd> search a country</div>
   <div class="freshbadge ov" id="freshbadge" title="When the data pipeline last pulled fresh numbers from every source">Data refreshed <span id="freshdate">—</span></div>
   <div class="hint ov" id="hint">drag to spin the globe</div>
   <div class="ev" id="evcard"></div>
@@ -130,6 +130,12 @@
         </button>
         <button class="btn reset" id="reset">Reset</button>
       </div>
+    </div>
+  </div>
+  <div class="cmdk ov" id="cmdk" role="dialog" aria-label="Search countries" aria-modal="true">
+    <div class="cmdkbox">
+      <input type="text" id="cmdkinput" placeholder="Jump to a country…" autocomplete="off" aria-label="Search countries"/>
+      <div class="cmdklist" id="cmdklist"></div>
     </div>
   </div>
   <div class="cpanel ov" id="cpanel">

@@ -832,7 +832,46 @@ function pickView(v){
   const b=document.querySelector(`#viewseg button[data-v="${v}"]`);
   if(b)b.click();
 }
+/* ── cmd+k country search ──────────────────────────────────────── */
+const CMDK_ALL=Object.keys(DATA).map(iso=>({iso,name:DATA[iso].name})).sort((a,b)=>a.name.localeCompare(b.name));
+const cmdkEl=document.getElementById("cmdk"),cmdkInput=document.getElementById("cmdkinput"),cmdkList=document.getElementById("cmdklist");
+let cmdkSel=0,cmdkItems=[];
+function openCmdk(){
+  cmdkEl.classList.add("show");cmdkInput.value="";renderCmdk("");cmdkInput.focus();
+}
+function closeCmdk(){cmdkEl.classList.remove("show");}
+function renderCmdk(q){
+  const ql=q.trim().toLowerCase();
+  cmdkItems=(ql?CMDK_ALL.filter(d=>d.name.toLowerCase().includes(ql)):CMDK_ALL).slice(0,40);
+  cmdkSel=0;
+  if(!cmdkItems.length){cmdkList.innerHTML='<div class="cmdkempty">No country matches</div>';return;}
+  cmdkList.innerHTML=cmdkItems.map((d,i)=>
+    `<div class="cmdkrow${i===0?" sel":""}" data-iso="${d.iso}"><span>${d.name}</span><span class="cr2">${d.iso}</span></div>`).join("");
+}
+function cmdkHighlight(){
+  cmdkList.querySelectorAll(".cmdkrow").forEach((r,i)=>r.classList.toggle("sel",i===cmdkSel));
+  const sel=cmdkList.children[cmdkSel];
+  if(sel)sel.scrollIntoView({block:"nearest"});
+}
+function cmdkPick(iso){
+  closeCmdk();
+  if(appMode==="compare")toggleCmp(iso);else openPanel(iso);
+}
+cmdkInput.addEventListener("input",()=>renderCmdk(cmdkInput.value));
+cmdkInput.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){e.preventDefault();closeCmdk();return;}
+  if(e.key==="ArrowDown"){e.preventDefault();if(cmdkItems.length){cmdkSel=(cmdkSel+1)%cmdkItems.length;cmdkHighlight();}return;}
+  if(e.key==="ArrowUp"){e.preventDefault();if(cmdkItems.length){cmdkSel=(cmdkSel-1+cmdkItems.length)%cmdkItems.length;cmdkHighlight();}return;}
+  if(e.key==="Enter"){e.preventDefault();const d=cmdkItems[cmdkSel];if(d)cmdkPick(d.iso);return;}
+});
+cmdkList.addEventListener("click",e=>{
+  const row=e.target.closest(".cmdkrow");
+  if(row)cmdkPick(row.dataset.iso);
+});
+cmdkEl.addEventListener("mousedown",e=>{if(e.target===cmdkEl)closeCmdk();});
+
 addEventListener("keydown",e=>{
+  if((e.metaKey||e.ctrlKey)&&(e.key==="k"||e.key==="K")){e.preventDefault();openCmdk();return;}
   if(e.metaKey||e.ctrlKey||e.altKey)return;
   const t=e.target,tag=t&&t.tagName;
   if(tag==="INPUT"||tag==="SELECT"||tag==="TEXTAREA"||(t&&t.isContentEditable))return;

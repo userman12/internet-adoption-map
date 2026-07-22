@@ -156,6 +156,7 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:30px;line-height
 .year .yc{font-size:12.5px;color:var(--muted);margin-top:4px}
 .year .yc b{color:var(--accent)}
 .foot{position:absolute;right:30px;top:108px;font-size:10.5px;color:#5a6470;text-align:right;z-index:5;line-height:1.5;transition:opacity .3s}
+.foot kbd{font:inherit;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:0 4px}
 #app.showyear .foot{opacity:0;pointer-events:none}
 .freshbadge{position:absolute;right:30px;top:150px;font-size:10px;color:#454e5a;text-align:right;
   z-index:5;transition:opacity .3s;cursor:default}
@@ -204,6 +205,22 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:30px;line-height
 .ev p{margin:0;font-size:12px;line-height:1.45;color:var(--muted)}
 .ev .evb+.evb{margin-top:11px;padding-top:11px;border-top:1px solid var(--line)}
 .ev.ctryb{border-left-color:#e6b34a}
+
+/* ── cmd+k country search ──────────────────────────────────────── */
+.cmdk{position:fixed;inset:0;z-index:40;display:none;background:rgba(9,11,15,.55);
+  align-items:flex-start;justify-content:center;padding-top:12vh}
+.cmdk.show{display:flex}
+.cmdkbox{width:420px;max-width:88vw;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.5);overflow:hidden}
+#cmdkinput{width:100%;background:none;border:0;border-bottom:1px solid var(--line);color:var(--ink);
+  font:inherit;font-size:15px;padding:13px 16px;outline:none;box-sizing:border-box}
+#cmdkinput::placeholder{color:var(--muted)}
+.cmdklist{max-height:308px;overflow-y:auto}
+.cmdkrow{padding:9px 16px;font-size:13px;color:var(--ink);cursor:pointer;display:flex;
+  justify-content:space-between;align-items:center;gap:10px}
+.cmdkrow .cr2{color:var(--muted);font-size:11px}
+.cmdkrow.sel,.cmdkrow:hover{background:rgba(23,184,166,.14)}
+.cmdkempty{padding:14px 16px;color:var(--muted);font-size:12.5px}
 
 /* ── country drill-down panel ───────────────────────────────────── */
 .cpanel{position:absolute;top:62px;right:30px;width:320px;z-index:8;display:none;
