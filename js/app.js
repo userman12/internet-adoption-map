@@ -339,7 +339,8 @@ function updateEvents(){
   const card=d3.select("#evcard");
   if(y==null){card.classed("show",false);shownEvYear=null;markTicks();return;}
   if(y!==shownEvYear){
-    const evs=EVENTS.filter(e=>e.y===y);
+    const evsAll=EVENTS.filter(e=>e.y===y);
+    const evs=[...evsAll.filter(e=>!e.iso),...evsAll.filter(e=>e.iso)].slice(0,2);
     card.html(evs.map(e=>{
       const kick=e.iso?`${e.y} · ${e.iso.map(evName).join(", ")}`:`${e.y} · World`;
       return `<div class="evb"><div class="ek${e.iso?" ctry":""}">${kick}</div><h4>${e.t}</h4><p>${e.d}</p></div>`;
