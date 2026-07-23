@@ -423,7 +423,7 @@ let scXscale=d3.scaleLinear(),scYscale=d3.scaleLinear(),scPopScale=d3.scaleSqrt(
 const LABEL_N=12; // biggest-by-population countries get a direct label
 const rcMargin={top:230,right:90,bottom:50,left:210};
 const rcBarsG=raceSvg.append("g").attr("class","rc-bars");
-const rcYearTxt=raceSvg.append("text").attr("class","rc-year ov").attr("text-anchor","end");
+const rcYearTxt=raceSvg.append("text").attr("class","rc-year").attr("text-anchor","end");
 const RACE_N=12;
 
 function populateAxisSelects(){
