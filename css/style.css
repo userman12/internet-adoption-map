@@ -75,8 +75,17 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:30px;line-height
 .rightcol .panel{position:static;width:auto}
 .pctl .crow+.crow{margin-top:9px}
 .pctl .crow{flex-wrap:nowrap;gap:8px}
-.pctl #viewseg{flex:1;min-width:0;width:100%}
-.pctl #viewseg button{white-space:nowrap;flex:1;padding-left:8px;padding-right:8px}
+/* the real segmented buttons stay in the DOM (URL sync, keyboard shortcuts,
+   aria-pressed mirroring all target them) but are visually replaced by the
+   arrow cycler below, which has room to show the full label at any width */
+#viewseg{display:none}
+.viewnav{flex:1;min-width:0;width:100%;display:flex;align-items:center;
+  background:var(--panel);border:1px solid var(--line);border-radius:9px}
+.vwarrow{flex:none;background:none;border:0;color:var(--muted);cursor:pointer;
+  font-size:17px;line-height:1;padding:7px 10px;transition:.15s}
+.vwarrow:hover{color:var(--ink)}
+.vwcur{flex:1;min-width:0;text-align:center;font-size:12.5px;font-weight:600;
+  color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* icon-only square buttons: play/pause and spin sit side by side, freeing the
    view-toggle row above to show all three modes at full width */
 .icobtn{flex:none;box-sizing:border-box;width:44px;height:35px;padding:0;
@@ -229,7 +238,7 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:30px;line-height
 .cpanel.show{display:block}
 #app.tl .cpanel{top:150px}
 #app.cp .ev{opacity:0 !important;pointer-events:none !important}
-#app.clean.sc .ev{opacity:0 !important;pointer-events:none !important}
+#app.clean.sc .ev,#app.clean.rc .ev{opacity:0 !important;pointer-events:none !important}
 .cpx{position:absolute;top:8px;right:10px;background:none;border:0;color:var(--muted);
   font:inherit;font-size:17px;line-height:1;cursor:pointer;padding:4px}
 .cpx:hover{color:var(--ink)}

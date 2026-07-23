@@ -936,9 +936,18 @@ function setSpin(on){
   autorotate=on&&view==="globe";
   if(autorotate)startSpin();
 }
+const VIEW_LABELS={flat:"Flat map",globe:"3D globe",scatter:"Scatter",race:"Race"};
+const VIEW_ORDER=["flat","globe","scatter","race"];
+function stepView(d){
+  const i=VIEW_ORDER.indexOf(view);
+  pickView(VIEW_ORDER[(i+d+VIEW_ORDER.length)%VIEW_ORDER.length]);
+}
+d3.select("#vwprev").on("click",()=>stepView(-1));
+d3.select("#vwnext").on("click",()=>stepView(1));
 d3.selectAll("#viewseg button").on("click",function(){
   const v=this.dataset.v;if(v===view)return;
   d3.selectAll("#viewseg button").classed("on",false);d3.select(this).classed("on",true);
+  d3.select("#vwcur").text(VIEW_LABELS[v]);
   view=v;
   const isScatter=view==="scatter",isRace=view==="race",isAlt=isScatter||isRace;
   app.classed("sc",isScatter).classed("rc",isRace);
